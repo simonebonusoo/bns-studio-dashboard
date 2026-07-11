@@ -1,0 +1,43 @@
+/* BNS Studio OS — token colore (light / dark). Valori RGB per alpha di Tailwind.
+   Palette volutamente ristretta: neutri + un solo accento (lime BNS). */
+:root {
+  --bg: 249 249 247; /* neutro caldo, leggermente più chiaro delle superfici */
+  --surface: 255 255 255;
+  --surface-2: 246 246 244;
+  --border: 236 235 231; /* hairline: basso contrasto, poco rumore */
+  --border-strong: 224 223 218;
+  --muted: 244 244 241;
+  --fg: 24 24 27;
+  --fg-subtle: 122 122 130;
+  --fg-faint: 161 161 170;
+
+  --accent: 178 214 52; /* lime BNS — usato SOLO come accento */
+  --accent-fg: 24 24 27;
+  --ring: 178 214 52;
+
+  --success: 30 152 84;
+  --warning: 190 130 10;
+  --danger: 214 58 58;
+  --info: 51 112 210;
+}
+
+.dark {
+  --bg: 15 15 17;
+  --surface: 24 24 27;
+  --surface-2: 32 32 36;
+  --border: 39 39 44;
+  --border-strong: 52 52 58;
+  --muted: 34 34 38;
+  --fg: 244 244 246;
+  --fg-subtle: 148 148 158;
+  --fg-faint: 96 96 106;
+
+  --accent: 198 240 60;
+  --accent-fg: 24 24 27;
+  --ring: 198 240 60;
+
+  --success: 58 186 112;
+  --warning: 216 162 48;
+  --danger: 238 102 102;
+  --info: 92 148 236;
+}

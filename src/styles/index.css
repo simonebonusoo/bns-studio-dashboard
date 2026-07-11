@@ -1,0 +1,95 @@
+@import './theme.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-bg text-fg font-sans antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+    letter-spacing: -0.006em;
+  }
+  h1, h2, h3 {
+    letter-spacing: -0.018em;
+  }
+  ::selection {
+    @apply bg-accent/30 text-fg;
+  }
+  /* Focus visibile e accessibile — anello sottile e coerente */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring/60 ring-offset-2 ring-offset-bg;
+  }
+  /* Scrollbar discreta, overlay-style */
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-border-strong;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-fg-faint;
+    background-clip: padding-box;
+  }
+}
+
+@layer utilities {
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50
+      focus:rounded-md focus:bg-surface focus:px-4 focus:py-2 focus:shadow-pop;
+  }
+  /* Micro-interazione di pressione, coerente su elementi interattivi */
+  .press {
+    @apply transition-transform duration-100 active:scale-[0.98];
+  }
+  /* Transizione d'ingresso pagina: solo opacità (nessun transform) per non
+     interferire con la misurazione dei grafici Recharts al primo paint. */
+  .page-enter {
+    animation: overlay-in 0.16s ease-out;
+  }
+  /* Riga tabella / lista con hover coerente */
+  .row-hover {
+    @apply transition-colors hover:bg-surface-2;
+  }
+}
+
+/* Stampa / esportazione PDF: mostra solo il documento */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-document,
+  #printable-document * {
+    visibility: visible;
+  }
+  #printable-document {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: none;
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

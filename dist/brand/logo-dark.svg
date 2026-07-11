@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" width="200" height="40">
+  <!-- Placeholder wordmark BNS STUDIO (variante scura) — sostituibile -->
+  <text x="0" y="28" font-family="Inter, system-ui, sans-serif" font-weight="800"
+        font-size="26" fill="#fafafa" letter-spacing="-1">BNS</text>
+  <text x="60" y="28" font-family="Inter, system-ui, sans-serif" font-weight="500"
+        font-size="26" fill="#fafafa" letter-spacing="1">STUDIO</text>
+  <circle cx="192" cy="10" r="4" fill="#c8f135" />
+</svg>
