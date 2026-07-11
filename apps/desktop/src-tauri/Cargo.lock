@@ -143,8 +143,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "bns-studio-os"
-version = "0.1.0"
+name = "bnsstudio"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",
