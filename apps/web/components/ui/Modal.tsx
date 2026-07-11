@@ -1,8 +1,9 @@
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { Button } from './Button';
+import { Input } from './Input';
 
 export function Modal({
   open,
@@ -71,15 +72,25 @@ export function ConfirmDialog({
   message,
   confirmLabel = 'Conferma',
   danger,
+  requireText,
 }: {
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  message: string;
+  message: ReactNode;
   confirmLabel?: string;
   danger?: boolean;
+  requireText?: string;
 }) {
+  const [value, setValue] = useState('');
+
+  useEffect(() => {
+    if (!open) setValue('');
+  }, [open]);
+
+  const requireMatch = !requireText || value.trim() === requireText;
+
   return (
     <Modal
       open={open}
@@ -93,6 +104,7 @@ export function ConfirmDialog({
           </Button>
           <Button
             variant={danger ? 'danger' : 'primary'}
+            disabled={!requireMatch}
             onClick={() => {
               onConfirm();
               onClose();
@@ -103,7 +115,17 @@ export function ConfirmDialog({
         </>
       }
     >
-      <p className="text-sm text-fg-subtle">{message}</p>
+      <div className="space-y-3">
+        <div className="text-sm text-fg-subtle">{message}</div>
+        {requireText ? (
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium uppercase tracking-wide text-fg-faint">
+              Scrivi "{requireText}" per confermare
+            </p>
+            <Input value={value} onChange={(event) => setValue(event.target.value)} autoFocus />
+          </div>
+        ) : null}
+      </div>
     </Modal>
   );
 }

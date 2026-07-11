@@ -1,5 +1,10 @@
 import { repositories } from '@/services/repository';
 
+export async function nextProjectCode() {
+  const count = await repositories.projects.count();
+  return `PRJ-2026-${String(count + 1).padStart(3, '0')}`;
+}
+
 export async function nextEstimateNumber() {
   const count = await repositories.estimates.count();
   return `PREV-2026-${String(count + 1).padStart(4, '0')}`;

@@ -1,1 +1,0 @@
-import{y as n}from"./index-CEum51wA.js";async function r(){const t=await n.estimates.count();return`PREV-2026-${String(t+1).padStart(4,"0")}`}async function o(){const t=await n.invoices.count();return`FAT-2026-${String(t+1).padStart(4,"0")}`}async function c(){const t=await n.contracts.count();return`CTR-2026-${String(t+1).padStart(3,"0")}`}export{o as a,c as b,r as n};

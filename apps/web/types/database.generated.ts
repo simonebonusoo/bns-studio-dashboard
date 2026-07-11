@@ -838,6 +838,75 @@ export type Database = {
           },
         ]
       }
+      markdown_imports: {
+        Row: {
+          candidate_count: number
+          created_at: string
+          created_by: string | null
+          created_count: number
+          deleted_at: string | null
+          failed_count: number
+          file_names: Json
+          files_count: number
+          id: string
+          organization_id: string
+          skipped_count: number
+          status: string
+          summary: Json
+          updated_at: string
+          updated_count: number
+        }
+        Insert: {
+          candidate_count?: number
+          created_at?: string
+          created_by?: string | null
+          created_count?: number
+          deleted_at?: string | null
+          failed_count?: number
+          file_names?: Json
+          files_count?: number
+          id?: string
+          organization_id: string
+          skipped_count?: number
+          status?: string
+          summary?: Json
+          updated_at?: string
+          updated_count?: number
+        }
+        Update: {
+          candidate_count?: number
+          created_at?: string
+          created_by?: string | null
+          created_count?: number
+          deleted_at?: string | null
+          failed_count?: number
+          file_names?: Json
+          files_count?: number
+          id?: string
+          organization_id?: string
+          skipped_count?: number
+          status?: string
+          summary?: Json
+          updated_at?: string
+          updated_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "markdown_imports_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "markdown_imports_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       members: {
         Row: {
           avatar_color: string | null

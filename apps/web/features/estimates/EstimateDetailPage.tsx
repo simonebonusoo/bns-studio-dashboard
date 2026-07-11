@@ -1,29 +1,41 @@
-import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Printer, Check, X, FileOutput } from 'lucide-react';
-import { useDetail, useList, useUpdate, useCreate } from '@/hooks/useEntities';
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Printer, Check, X, FileOutput, Pencil, Trash2 } from 'lucide-react';
+import { useDetail, useList, useUpdate, useCreate, useRemove } from '@/hooks/useEntities';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
 import { LoadingState, ErrorState } from '@/components/ui/States';
+import { ConfirmDialog } from '@/components/ui/Modal';
 import { DocumentView } from '@/features/finance/DocumentView';
 import { formatDate } from '@/lib/format';
 import { nextInvoiceNumber } from '@/services/documentNumbers';
+import { getEstimateDeleteSafety, hasBlockingDependencies } from '@/services/deleteSafety';
 import { useAuth } from '@/stores/auth';
-import type { Estimate, Client, Invoice } from '@/types';
+import { EstimateFormModal } from './EstimateFormModal';
+import type { Estimate, Client, Invoice, Contract } from '@/types';
 import { toast } from 'sonner';
 
 export default function EstimateDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const can = useAuth((s) => s.can);
   const { data: estimate, isLoading } = useDetail<Estimate>('estimates', id);
   const { data: clients } = useList<Client>('clients');
+  const { data: contracts } = useList<Contract>('contracts');
+  const { data: invoices } = useList<Invoice>('invoices');
   const update = useUpdate<Estimate>('estimates');
   const createInvoice = useCreate<Invoice>('invoices');
+  const remove = useRemove('estimates');
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (isLoading) return <LoadingState />;
   if (!estimate) return <ErrorState message="Preventivo non trovato" />;
 
   const client = (clients ?? []).find((c) => c.id === estimate.clientId);
   const canManage = can('estimates.manage');
+  const deleteSafety = getEstimateDeleteSafety(estimate, contracts ?? [], invoices ?? []);
+  const blockedDelete = hasBlockingDependencies(deleteSafety);
 
   const setStatus = async (status: Estimate['status']) => {
     await update.mutateAsync({
@@ -31,6 +43,13 @@ export default function EstimateDetailPage() {
       patch: { status, acceptedAt: status === 'accepted' ? new Date().toISOString() : estimate.acceptedAt },
     });
     toast.success(status === 'accepted' ? 'Preventivo accettato' : 'Preventivo aggiornato');
+  };
+
+  const deleteEstimate = async () => {
+    if (blockedDelete) return;
+    await remove.mutateAsync(estimate.id);
+    toast.success('Preventivo eliminato');
+    navigate('/estimates');
   };
 
   const convertToInvoice = async () => {
@@ -59,6 +78,11 @@ export default function EstimateDetailPage() {
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={estimate.status} />
           <Button variant="secondary" onClick={() => window.print()}><Printer className="h-4 w-4" /> Stampa / PDF</Button>
+          {canManage && (
+            <Button variant="secondary" onClick={() => setEditOpen(true)}>
+              <Pencil className="h-4 w-4" /> Modifica
+            </Button>
+          )}
           {canManage && estimate.status !== 'accepted' && (
             <>
               <Button variant="secondary" onClick={() => setStatus('accepted')}><Check className="h-4 w-4" /> Accetta</Button>
@@ -67,6 +91,11 @@ export default function EstimateDetailPage() {
           )}
           {canManage && estimate.status === 'accepted' && (
             <Button onClick={convertToInvoice}><FileOutput className="h-4 w-4" /> Crea fattura</Button>
+          )}
+          {canManage && (
+            <Button variant="ghost" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="h-4 w-4 text-danger" /> Elimina
+            </Button>
           )}
         </div>
       </div>
@@ -81,6 +110,34 @@ export default function EstimateDetailPage() {
         globalDiscountPct={estimate.globalDiscountPct}
         depositPct={estimate.depositPct}
         notes={estimate.notes}
+      />
+
+      <EstimateFormModal open={editOpen} onClose={() => setEditOpen(false)} estimate={estimate} />
+      <ConfirmDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={blockedDelete ? () => {} : deleteEstimate}
+        title={blockedDelete ? 'Eliminazione non disponibile' : `Eliminare ${estimate.number}?`}
+        message={
+          blockedDelete ? (
+            <div className="space-y-2">
+              <p>Non puoi eliminare definitivamente questo preventivo perché è collegato a:</p>
+              <ul className="list-disc space-y-1 pl-5">
+                {deleteSafety.dependencies.map((item) => (
+                  <li key={item.label}>
+                    {item.count} {item.label}
+                    {item.count > 1 ? 'i' : ''}
+                  </li>
+                ))}
+              </ul>
+              <p>Rimuovi prima i record collegati oppure conserva il preventivo a fini storici.</p>
+            </div>
+          ) : (
+            'Questa azione rimuoverà il preventivo dal gestionale e aggiornerà subito dashboard e analytics.'
+          )
+        }
+        confirmLabel={blockedDelete ? 'Chiudi' : 'Elimina preventivo'}
+        danger={!blockedDelete}
       />
     </div>
   );

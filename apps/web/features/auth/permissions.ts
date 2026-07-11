@@ -24,6 +24,7 @@ export const PERMISSIONS = [
   'files.write',
   'settings.manage',
   'audit.read',
+  'imports.manage',
   'automations.manage',
   'client_portal.access',
 ] as const;
@@ -47,6 +48,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'estimates.read',
     'estimates.manage',
     'invoices.read',
+    'imports.manage',
     'team.read',
     'files.read',
     'files.write',
@@ -74,6 +76,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'invoices.read',
     'invoices.manage',
     'payments.manage',
+    'imports.manage',
     'projects.read',
   ],
   client: ['client_portal.access'],

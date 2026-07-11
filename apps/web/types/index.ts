@@ -381,6 +381,19 @@ export interface ActivityLog extends BaseEntity {
   metadata?: Record<string, unknown>;
 }
 
+export interface MarkdownImport extends BaseEntity {
+  createdBy?: string;
+  fileNames: string[];
+  filesCount: number;
+  candidateCount: number;
+  createdCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  status: 'pending' | 'completed' | 'completed_with_errors' | 'failed';
+  summary: Record<string, unknown>;
+}
+
 export interface DocItem extends BaseEntity {
   title: string;
   type: string;

@@ -1,29 +1,35 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Printer, Plus } from 'lucide-react';
-import { useDetail, useList, useCreate, useUpdate } from '@/hooks/useEntities';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Printer, Plus, Pencil, Trash2 } from 'lucide-react';
+import { useDetail, useList, useCreate, useUpdate, useRemove } from '@/hooks/useEntities';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/Badge';
 import { LoadingState, ErrorState } from '@/components/ui/States';
-import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog, Modal } from '@/components/ui/Modal';
 import { Input, Select, Field } from '@/components/ui/Input';
 import { DocumentView } from '@/features/finance/DocumentView';
 import { invoiceBalance } from '@/lib/finance';
 import { formatCurrency, formatDate } from '@/lib/format';
+import { getInvoiceDeleteSafety, hasBlockingDependencies } from '@/services/deleteSafety';
 import { useAuth } from '@/stores/auth';
+import { InvoiceFormModal } from './InvoiceFormModal';
 import type { Invoice, Client, Payment } from '@/types';
 import { toast } from 'sonner';
 
 export default function InvoiceDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const can = useAuth((s) => s.can);
   const { data: invoice, isLoading } = useDetail<Invoice>('invoices', id);
   const { data: clients } = useList<Client>('clients');
   const { data: payments } = useList<Payment>('payments');
   const createPayment = useCreate<Payment>('payments');
   const updateInvoice = useUpdate<Invoice>('invoices');
+  const remove = useRemove('invoices');
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<Payment['method']>('bank_transfer');
 
@@ -33,6 +39,8 @@ export default function InvoiceDetailPage() {
   const client = (clients ?? []).find((c) => c.id === invoice.clientId);
   const invPayments = (payments ?? []).filter((p) => p.invoiceId === invoice.id);
   const balance = invoiceBalance(invoice, payments ?? []);
+  const deleteSafety = getInvoiceDeleteSafety(invoice, payments ?? []);
+  const blockedDelete = hasBlockingDependencies(deleteSafety);
 
   const recordPayment = async () => {
     const value = Number(amount);
@@ -62,6 +70,13 @@ export default function InvoiceDetailPage() {
     setAmount('');
   };
 
+  const deleteInvoice = async () => {
+    if (blockedDelete) return;
+    await remove.mutateAsync(invoice.id);
+    toast.success('Fattura eliminata');
+    navigate('/invoices');
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
@@ -71,8 +86,18 @@ export default function InvoiceDetailPage() {
         <div className="flex items-center gap-2">
           <StatusBadge status={invoice.status} />
           <Button variant="secondary" onClick={() => window.print()}><Printer className="h-4 w-4" /> Stampa / PDF</Button>
+          {can('invoices.manage') && (
+            <Button variant="secondary" onClick={() => setEditOpen(true)}>
+              <Pencil className="h-4 w-4" /> Modifica
+            </Button>
+          )}
           {can('payments.manage') && balance.balance > 0 && (
             <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Registra pagamento</Button>
+          )}
+          {can('invoices.manage') && (
+            <Button variant="ghost" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="h-4 w-4 text-danger" /> Elimina
+            </Button>
           )}
         </div>
       </div>
@@ -149,6 +174,33 @@ export default function InvoiceDetailPage() {
           </Field>
         </div>
       </Modal>
+      <InvoiceFormModal open={editOpen} onClose={() => setEditOpen(false)} invoice={invoice} />
+      <ConfirmDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={blockedDelete ? () => {} : deleteInvoice}
+        title={blockedDelete ? 'Eliminazione non disponibile' : `Eliminare ${invoice.number}?`}
+        message={
+          blockedDelete ? (
+            <div className="space-y-2">
+              <p>Non puoi eliminare definitivamente questa fattura perché è collegata a:</p>
+              <ul className="list-disc space-y-1 pl-5">
+                {deleteSafety.dependencies.map((item) => (
+                  <li key={item.label}>
+                    {item.count} {item.label}
+                    {item.count > 1 ? 'i' : ''}
+                  </li>
+                ))}
+              </ul>
+              <p>Rimuovi prima i pagamenti oppure mantieni la fattura nello storico.</p>
+            </div>
+          ) : (
+            deleteSafety.warning ?? 'Questa azione rimuoverà la fattura dal gestionale.'
+          )
+        }
+        confirmLabel={blockedDelete ? 'Chiudi' : 'Elimina fattura'}
+        danger={!blockedDelete}
+      />
     </div>
   );
 }

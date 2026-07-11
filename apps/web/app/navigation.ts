@@ -12,6 +12,7 @@ import {
   ArrowLeftRight,
   BarChart3,
   FolderOpen,
+  FileUp,
   Settings,
   Package,
   Gauge,
@@ -73,6 +74,7 @@ export const NAV: NavGroup[] = [
     label: 'Risorse',
     items: [
       { label: 'File', to: '/files', icon: FolderOpen, permission: 'files.read' },
+      { label: 'Importa Markdown', to: '/import', icon: FileUp, permission: 'imports.manage' },
       { label: 'Servizi', to: '/services', icon: Package },
     ],
   },

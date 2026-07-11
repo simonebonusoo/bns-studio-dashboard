@@ -6,6 +6,7 @@ import { getActiveSession } from '@/services/session';
 import type { PostgrestError } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/services/supabase';
 import type { Database } from '@/types/database.generated';
+import { recordActivity } from '@/services/activity';
 
 /**
  * Repository centralizzato: i componenti React non interrogano mai direttamente
@@ -32,6 +33,28 @@ export interface EntityRepository<T extends BaseRow> {
 
 type PublicTables = Database['public']['Tables'];
 type TableName = keyof PublicTables;
+
+const ACTIVITY_ENTITY_BY_TABLE: Partial<Record<TableName, string>> = {
+  members: 'member',
+  companies: 'company',
+  clients: 'client',
+  opportunities: 'opportunity',
+  services: 'service',
+  projects: 'project',
+  milestones: 'milestone',
+  tasks: 'task',
+  time_entries: 'time_entry',
+  estimates: 'estimate',
+  invoices: 'invoice',
+  payments: 'payment',
+  transactions: 'transaction',
+  contracts: 'contract',
+  files: 'file',
+  calendar_events: 'event',
+  comments: 'comment',
+  documents: 'document',
+  markdown_imports: 'markdown_import',
+};
 
 /** Riga DB generica: chiavi snake_case, valori sconosciuti. */
 type DbRow = Record<string, unknown>;
@@ -68,6 +91,27 @@ function mapFromDbKey(key: string) {
   return SPECIAL_FROM_DB[key] ?? toCamelCase(key);
 }
 
+const NULLABLE_EMPTY_SUFFIXES = ['Id', 'Date', 'At'];
+
+function shouldNullifyEmptyString(key: string, value: unknown) {
+  return value === '' && NULLABLE_EMPTY_SUFFIXES.some((suffix) => key.endsWith(suffix));
+}
+
+function normalizeForDatabase<T>(value: T, key?: string): T {
+  if (key && shouldNullifyEmptyString(key, value)) {
+    return null as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => normalizeForDatabase(entry)) as T;
+  }
+  if (value && typeof value === 'object' && !(value instanceof Date)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([entryKey, entryValue]) => [entryKey, normalizeForDatabase(entryValue, entryKey)]),
+    ) as T;
+  }
+  return value;
+}
+
 /**
  * Converte un oggetto di dominio (camelCase) in una riga DB (snake_case),
  * scartando i valori `undefined`. Nessuna proprietà camelCase raggiunge mai il
@@ -96,9 +140,24 @@ function requireOrganizationId() {
   return organizationId;
 }
 
+async function recordRepositoryActivity(
+  tableName: TableName,
+  action: string,
+  entityId?: string,
+  metadata?: Record<string, unknown>,
+) {
+  const entityType = ACTIVITY_ENTITY_BY_TABLE[tableName];
+  if (!entityType) return;
+  try {
+    await recordActivity({ action, entityType, entityId, metadata });
+  } catch (error) {
+    console.error(`[BnsStudio] Activity log fallita per ${tableName}:${action}`, error);
+  }
+}
+
 // ─────────────────────────── Demo (Dexie) ───────────────────────────
 
-function createDemoRepository<T extends BaseRow>(table: Table<T, string>): EntityRepository<T> {
+function createDemoRepository<T extends BaseRow>(tableName: TableName, table: Table<T, string>): EntityRepository<T> {
   return {
     async list(filter?: (row: T) => boolean): Promise<T[]> {
       const organizationId = requireOrganizationId();
@@ -124,6 +183,7 @@ function createDemoRepository<T extends BaseRow>(table: Table<T, string>): Entit
         updatedAt: nowISO(),
       } as T;
       await table.add(row);
+      await recordRepositoryActivity(tableName, 'create', row.id);
       return row;
     },
 
@@ -132,6 +192,11 @@ function createDemoRepository<T extends BaseRow>(table: Table<T, string>): Entit
       if (!existing) throw new Error(`Record ${id} non trovato`);
       const updated = { ...existing, ...patch, updatedAt: nowISO() } as T;
       await table.put(updated);
+      await recordRepositoryActivity(
+        tableName,
+        Object.prototype.hasOwnProperty.call(patch, 'status') ? 'status_change' : 'update',
+        id,
+      );
       return updated;
     },
 
@@ -140,11 +205,13 @@ function createDemoRepository<T extends BaseRow>(table: Table<T, string>): Entit
       const existing = await table.get(id);
       if (!existing) return;
       await table.put({ ...existing, deletedAt: nowISO(), updatedAt: nowISO() });
+      await recordRepositoryActivity(tableName, 'delete', id);
     },
 
     /** Eliminazione definitiva (solo per operazioni amministrative). */
     async hardDelete(id: string): Promise<void> {
       await table.delete(id);
+      await recordRepositoryActivity(tableName, 'delete', id);
     },
 
     async count(): Promise<number> {
@@ -158,19 +225,6 @@ function createDemoRepository<T extends BaseRow>(table: Table<T, string>): Entit
 
 // ───────────────────────── Produzione (Supabase) ─────────────────────────
 
-/**
- * Interfaccia minima e precisa del query builder PostgREST, limitata ai soli
- * metodi usati dal repository. Modella fedelmente il contratto runtime di
- * `supabase.from(table)` operando su righe snake_case (`DbRow`).
- *
- * Perché: il repository è generico sul nome tabella (`K extends TableName`).
- * I generici di supabase-js, con un `K` non-literal, collassano Row/Insert/
- * Update in un'unione e richiederebbero l'intersezione di tutte le tabelle
- * (di fatto inutilizzabile). Invece di ricorrere a `any` o `@ts-ignore`, si
- * effettua UN SOLO cast documentato verso questa interfaccia (`asDbQuery`),
- * mantenendo `DbRow` come tipo esplicito e sicuro ai bordi. La tipizzazione di
- * dominio è garantita da `deserialize<T>()` che restituisce l'entità camelCase.
- */
 interface DbQueryResult {
   data: DbRow[] | null;
   error: PostgrestError | null;
@@ -211,17 +265,11 @@ interface DbTableQuery {
   delete(): DbDeleteResult;
 }
 
-/**
- * Unico punto di cast: da builder PostgREST tipizzato (sul client `Database`)
- * alla vista `DbTableQuery` su righe snake_case. `K` resta un literal noto, il
- * client è comunque tipizzato con lo schema reale (`SupabaseClient<Database>`).
- */
 function dbTable<K extends TableName>(name: K): DbTableQuery {
   return getSupabaseClient().from(name) as unknown as DbTableQuery;
 }
 
 interface SupabaseRepoOptions {
-  /** Se true la tabella ha la colonna `deleted_at` (soft delete). */
   softDelete: boolean;
 }
 
@@ -253,13 +301,13 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
         throw new Error('Organizzazione Supabase non disponibile: nessuna sessione attiva.');
       }
 
-      const payload = serialize({
+      const payload = serialize(normalizeForDatabase({
         ...data,
-        id: data.id ?? uid(),
+        ...(data.id ? { id: data.id } : {}),
         organizationId,
         createdAt: nowISO(),
         updatedAt: nowISO(),
-      });
+      }));
 
       const { data: row, error } = await dbTable(tableName)
         .insert(payload)
@@ -268,11 +316,12 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
 
       if (error) throw error;
       if (!row) throw new Error(`Creazione ${tableName} non riuscita: nessuna riga restituita.`);
+      await recordRepositoryActivity(tableName, 'create', String(row.id));
       return deserialize<T>(row);
     },
 
     async update(id, patch) {
-      const payload = serialize({ ...patch, updatedAt: nowISO() });
+      const payload = serialize(normalizeForDatabase({ ...patch, updatedAt: nowISO() }));
       const { data: row, error } = await dbTable(tableName)
         .update(payload)
         .eq('id', id)
@@ -281,6 +330,11 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
 
       if (error) throw error;
       if (!row) throw new Error(`Aggiornamento ${tableName} non riuscito: record ${id} inesistente.`);
+      await recordRepositoryActivity(
+        tableName,
+        Object.prototype.hasOwnProperty.call(patch, 'status') ? 'status_change' : 'update',
+        id,
+      );
       return deserialize<T>(row);
     },
 
@@ -288,16 +342,19 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
       if (!softDelete) {
         const { error } = await dbTable(tableName).delete().eq('id', id);
         if (error) throw error;
+        await recordRepositoryActivity(tableName, 'delete', id);
         return;
       }
       const payload = serialize({ deletedAt: nowISO(), updatedAt: nowISO() });
       const { error } = await dbTable(tableName).update(payload).eq('id', id);
       if (error) throw error;
+      await recordRepositoryActivity(tableName, 'delete', id);
     },
 
     async hardDelete(id) {
       const { error } = await dbTable(tableName).delete().eq('id', id);
       if (error) throw error;
+      await recordRepositoryActivity(tableName, 'delete', id);
     },
 
     async count() {
@@ -311,26 +368,17 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
 }
 
 function createRepository<T extends BaseRow, K extends TableName>(
-  dbTable: K,
+  tableName: K,
   demoTable: Table<T, string>,
   options: SupabaseRepoOptions = { softDelete: true },
 ): EntityRepository<T> {
   return IS_DEMO
-    ? createDemoRepository(demoTable)
-    : createSupabaseRepository<T, K>(dbTable, options);
+    ? createDemoRepository(tableName, demoTable)
+    : createSupabaseRepository<T, K>(tableName, options);
 }
 
 const APPEND_ONLY: SupabaseRepoOptions = { softDelete: false };
 
-/**
- * Registro dei repository. I nomi tabella sono literal così il client Supabase
- * tipizzato deriva Row/Insert/Update corretti.
- *
- * NOTA: `opportunities`, `milestones`, `tasks`, `comments` e `documents`
- * esistono ancora nello schema ma NON sono esposti dall'interfaccia (Pipeline,
- * Opportunità e Task sono stati rimossi dalla UI). Restano qui solo per il
- * dataset demo Dexie e per compatibilità futura.
- */
 export const repositories = {
   members: createRepository('members', db.members),
   companies: createRepository('companies', db.companies),
@@ -351,6 +399,7 @@ export const repositories = {
   comments: createRepository('comments', db.comments),
   notifications: createRepository('notifications', db.notifications, APPEND_ONLY),
   activityLogs: createRepository('activity_logs', db.activityLogs, APPEND_ONLY),
+  markdownImports: createRepository('markdown_imports', db.markdownImports),
   documents: createRepository('documents', db.documents),
 };
 

@@ -6,6 +6,7 @@ import type { FileItem } from '@/types';
 
 function invalidateFiles(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ['files'] });
+  qc.invalidateQueries({ queryKey: queryKeys.dashboard });
   qc.invalidateQueries({ queryKey: queryKeys.analytics });
 }
 

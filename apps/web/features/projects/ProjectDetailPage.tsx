@@ -1,28 +1,43 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Pencil } from 'lucide-react';
-import { useDetail, useList } from '@/hooks/useEntities';
+import { ArrowLeft, Pencil, Archive, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useDetail, useHardDelete, useList, useUpdate } from '@/hooks/useEntities';
 import { Card, CardHeader, MetricCard } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
 import { LoadingState, ErrorState } from '@/components/ui/States';
+import { ConfirmDialog } from '@/components/ui/Modal';
 import { ProjectFormModal } from './ProjectFormModal';
 import { projectProfitability } from '@/lib/finance';
 import { formatCurrency, formatDate, formatPercent, formatHours } from '@/lib/format';
+import { getProjectDeleteSafety, hasBlockingDependencies } from '@/services/deleteSafety';
 import { useAuth } from '@/stores/auth';
-import type { Client, Milestone, Project, TimeEntry } from '@/types';
+import type { CalendarEvent, Client, Contract, FileItem, Invoice, Milestone, Payment, Project, TimeEntry, Transaction } from '@/types';
+import { toast } from 'sonner';
 
 type Tab = 'overview' | 'milestones' | 'activity';
 
 export default function ProjectDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const can = useAuth((state) => state.can);
   const { data: project, isLoading } = useDetail<Project>('projects', id);
   const { data: milestones } = useList<Milestone>('milestones');
   const { data: entries } = useList<TimeEntry>('timeEntries');
   const { data: clients } = useList<Client>('clients');
+  const { data: invoices } = useList<Invoice>('invoices');
+  const { data: payments } = useList<Payment>('payments');
+  const { data: contracts } = useList<Contract>('contracts');
+  const { data: files } = useList<FileItem>('files');
+  const { data: events } = useList<CalendarEvent>('events');
+  const { data: transactions } = useList<Transaction>('transactions');
+  const update = useUpdate<Project>('projects');
+  const hardDelete = useHardDelete('projects');
   const [tab, setTab] = useState<Tab>('overview');
   const [edit, setEdit] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const projectMilestones = useMemo(
     () => (milestones ?? []).filter((milestone) => milestone.projectId === id).sort((left, right) => left.order - right.order),
@@ -40,12 +55,37 @@ export default function ProjectDetailPage() {
   const profitability = projectProfitability(project, entries ?? []);
   const showFinance = can('finances.read');
   const completedMilestones = projectMilestones.filter((milestone) => milestone.status === 'completed').length;
+  const deleteSafety = getProjectDeleteSafety({
+    project,
+    milestones: milestones ?? [],
+    timeEntries: entries ?? [],
+    invoices: invoices ?? [],
+    payments: payments ?? [],
+    contracts: contracts ?? [],
+    files: files ?? [],
+    events: events ?? [],
+    transactions: transactions ?? [],
+  });
+  const blockedDelete = hasBlockingDependencies(deleteSafety);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: 'Panoramica' },
     { key: 'milestones', label: `Milestone (${projectMilestones.length})` },
     { key: 'activity', label: `Ore registrate (${projectEntries.length})` },
   ];
+
+  const archiveProject = async () => {
+    await update.mutateAsync({ id: project.id, patch: { status: 'archived' } });
+    toast.success('Progetto archiviato');
+    setArchiveOpen(false);
+  };
+
+  const deleteProject = async () => {
+    if (blockedDelete) return;
+    await hardDelete.mutateAsync(project.id);
+    toast.success('Progetto eliminato definitivamente');
+    navigate('/projects');
+  };
 
   return (
     <div className="space-y-5">
@@ -71,11 +111,23 @@ export default function ProjectDetailPage() {
             <StatusBadge status={project.priority} />
           </div>
         </div>
-        {can('projects.write') && (
-          <Button variant="secondary" onClick={() => setEdit(true)}>
-            <Pencil className="h-4 w-4" /> Modifica
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {can('projects.write') && (
+            <Button variant="secondary" onClick={() => setEdit(true)}>
+              <Pencil className="h-4 w-4" /> Modifica
+            </Button>
+          )}
+          {can('projects.archive') && (
+            <Button variant="secondary" onClick={() => setArchiveOpen(true)}>
+              <Archive className="h-4 w-4" /> Archivia
+            </Button>
+          )}
+          {can('projects.archive') && (
+            <Button variant="ghost" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="h-4 w-4 text-danger" /> Elimina definitivamente
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -154,6 +206,42 @@ export default function ProjectDetailPage() {
       )}
 
       <ProjectFormModal open={edit} onClose={() => setEdit(false)} project={project} />
+      <ConfirmDialog
+        open={archiveOpen}
+        onClose={() => setArchiveOpen(false)}
+        onConfirm={archiveProject}
+        title={`Archiviare "${project.name}"?`}
+        message="Il progetto resterà nello storico ma verrà escluso dai flussi operativi attivi."
+        confirmLabel="Archivia progetto"
+        danger
+      />
+      <ConfirmDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={blockedDelete ? () => {} : deleteProject}
+        title={blockedDelete ? 'Eliminazione non disponibile' : `Eliminare definitivamente "${project.name}"?`}
+        message={
+          blockedDelete ? (
+            <div className="space-y-2">
+              <p>Questo progetto è ancora collegato a:</p>
+              <ul className="list-disc space-y-1 pl-5">
+                {deleteSafety.dependencies.map((item) => (
+                  <li key={item.label}>
+                    {item.count} {item.label}
+                    {item.count > 1 ? 'i' : ''}
+                  </li>
+                ))}
+              </ul>
+              <p>Puoi archiviarlo oppure rimuovere prima i record collegati.</p>
+            </div>
+          ) : (
+            'Questa azione non può essere annullata.'
+          )
+        }
+        confirmLabel={blockedDelete ? 'Chiudi' : 'Elimina definitivamente'}
+        danger={!blockedDelete}
+        requireText={blockedDelete ? undefined : 'ELIMINA'}
+      />
     </div>
   );
 }

@@ -20,6 +20,7 @@ import type {
   Comment,
   Notification,
   ActivityLog,
+  MarkdownImport,
   DocItem,
 } from '@/types';
 
@@ -58,12 +59,13 @@ export class BnsDatabase extends Dexie {
   comments!: Table<Comment, string>;
   notifications!: Table<Notification, string>;
   activityLogs!: Table<ActivityLog, string>;
+  markdownImports!: Table<MarkdownImport, string>;
   documents!: Table<DocItem, string>;
   meta!: Table<{ key: string; value: unknown }, string>;
 
   constructor() {
     super('bns-studio-os');
-    this.version(2).stores({
+    this.version(3).stores({
       users: 'id, email, memberId, organizationId',
       organizations: 'id, slug',
       members: 'id, organizationId, email, role, status',
@@ -85,6 +87,7 @@ export class BnsDatabase extends Dexie {
       comments: 'id, organizationId, entityType, entityId, authorId',
       notifications: 'id, organizationId, userId, read, type',
       activityLogs: 'id, organizationId, actorId, entityType, entityId',
+      markdownImports: 'id, organizationId, status, createdBy, createdAt',
       documents: 'id, organizationId, projectId, clientId',
       meta: 'key',
     });

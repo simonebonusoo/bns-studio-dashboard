@@ -1,34 +1,51 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Download, Plus } from 'lucide-react';
+import { Download, Plus, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { MetricCard } from '@/components/ui/Card';
 import { DataTable, type Column } from '@/components/tables/DataTable';
 import { StatusBadge } from '@/components/ui/Badge';
 import { LoadingState } from '@/components/ui/States';
-import { useList } from '@/hooks/useEntities';
+import { ConfirmDialog } from '@/components/ui/Modal';
+import { ActionMenu } from '@/components/ui/ActionMenu';
+import { useList, useRemove } from '@/hooks/useEntities';
 import { documentTotals } from '@/lib/finance';
 import { formatCurrency, formatDate } from '@/lib/format';
+import { getEstimateDeleteSafety, hasBlockingDependencies } from '@/services/deleteSafety';
 import { exportToCSV } from '@/utils/csv';
 import { EstimateFormModal } from './EstimateFormModal';
-import type { Estimate, Client } from '@/types';
+import { useAuth } from '@/stores/auth';
+import type { Estimate, Client, Contract, Invoice } from '@/types';
+import { toast } from 'sonner';
 
 export default function EstimatesPage() {
   const { data: estimates, isLoading } = useList<Estimate>('estimates');
   const { data: clients } = useList<Client>('clients');
+  const { data: contracts } = useList<Contract>('contracts');
+  const { data: invoices } = useList<Invoice>('invoices');
   const navigate = useNavigate();
+  const can = useAuth((state) => state.can);
+  const remove = useRemove('estimates');
   const [params, setParams] = useSearchParams();
   const [open, setOpen] = useState(params.get('new') === '1');
+  const [editing, setEditing] = useState<Estimate | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Estimate | null>(null);
   const list = estimates ?? [];
 
   const closeModal = () => {
     setOpen(false);
+    setEditing(null);
     if (params.get('new')) { params.delete('new'); setParams(params, { replace: true }); }
   };
 
   const clientName = (id?: string) => (clients ?? []).find((c) => c.id === id)?.displayName ?? '—';
   const total = (e: Estimate) => documentTotals(e.items, { globalDiscountPct: e.globalDiscountPct }).total;
+  const deleteSafety = useMemo(
+    () => (deleteTarget ? getEstimateDeleteSafety(deleteTarget, contracts ?? [], invoices ?? []) : null),
+    [contracts, deleteTarget, invoices],
+  );
+  const blockedDelete = deleteSafety ? hasBlockingDependencies(deleteSafety) : false;
 
   const openValue = list.filter((e) => ['sent', 'viewed', 'draft'].includes(e.status)).reduce((s, e) => s + total(e), 0);
   const acceptedValue = list.filter((e) => e.status === 'accepted').reduce((s, e) => s + total(e), 0);
@@ -42,7 +59,47 @@ export default function EstimatesPage() {
     { key: 'issue', header: 'Emissione', sortValue: (e) => e.issueDate, render: (e) => <span className="text-fg-subtle">{formatDate(e.issueDate)}</span> },
     { key: 'total', header: 'Totale', sortValue: (e) => total(e), render: (e) => formatCurrency(total(e)) },
     { key: 'status', header: 'Stato', render: (e) => <StatusBadge status={e.status} />, sortValue: (e) => e.status },
+    {
+      key: 'actions',
+      header: 'Azioni',
+      className: 'w-16 text-right',
+      render: (estimate) => (
+        <div className="flex justify-end" onClick={(event) => event.stopPropagation()}>
+          <ActionMenu
+            items={[
+              { label: 'Apri dettaglio', icon: ExternalLink, onClick: () => navigate(`/estimates/${estimate.id}`) },
+              ...(can('estimates.manage')
+                ? [
+                    {
+                      label: 'Modifica',
+                      icon: Pencil,
+                      onClick: () => {
+                        setEditing(estimate);
+                        setOpen(true);
+                      },
+                    },
+                    {
+                      label: 'Elimina',
+                      icon: Trash2,
+                      danger: true,
+                      separatorBefore: true,
+                      onClick: () => setDeleteTarget(estimate),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        </div>
+      ),
+    },
   ];
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || blockedDelete) return;
+    await remove.mutateAsync(deleteTarget.id);
+    toast.success('Preventivo eliminato');
+    setDeleteTarget(null);
+  };
 
   if (isLoading) return <LoadingState />;
 
@@ -65,7 +122,32 @@ export default function EstimatesPage() {
         <MetricCard label="Totale" value={list.length} />
       </div>
       <DataTable data={list} columns={columns} onRowClick={(e) => navigate(`/estimates/${e.id}`)} />
-      <EstimateFormModal open={open} onClose={closeModal} />
+      <EstimateFormModal open={open} onClose={closeModal} estimate={editing ?? undefined} />
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={blockedDelete ? () => {} : confirmDelete}
+        title={blockedDelete ? 'Eliminazione non disponibile' : `Eliminare ${deleteTarget?.number ?? 'preventivo'}?`}
+        message={
+          blockedDelete && deleteSafety ? (
+            <div className="space-y-2">
+              <p>Questo preventivo è ancora collegato a:</p>
+              <ul className="list-disc space-y-1 pl-5">
+                {deleteSafety.dependencies.map((item) => (
+                  <li key={item.label}>
+                    {item.count} {item.label}
+                    {item.count > 1 ? 'i' : ''}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            'Questa azione rimuoverà il preventivo dal gestionale.'
+          )
+        }
+        confirmLabel={blockedDelete ? 'Chiudi' : 'Elimina'}
+        danger={!blockedDelete}
+      />
     </div>
   );
 }

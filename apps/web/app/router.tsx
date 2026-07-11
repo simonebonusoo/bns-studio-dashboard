@@ -25,6 +25,7 @@ const PaymentsPage = lazy(() => import('@/features/payments/PaymentsPage'));
 const FinancePage = lazy(() => import('@/features/finance/FinancePage'));
 const AnalyticsPage = lazy(() => import('@/features/analytics/AnalyticsPage'));
 const FilesPage = lazy(() => import('@/features/files/FilesPage'));
+const ImportPage = lazy(() => import('@/features/import/ImportPage'));
 const ServicesPage = lazy(() => import('@/features/services/ServicesPage'));
 const SettingsPage = lazy(() => import('@/features/settings/SettingsPage'));
 const NotificationsPage = lazy(() => import('@/features/notifications/NotificationsPage'));
@@ -61,6 +62,7 @@ export const router = createBrowserRouter([
       { path: 'finance', element: <FinancePage /> },
       { path: 'analytics', element: <AnalyticsPage /> },
       { path: 'files', element: <FilesPage /> },
+      { path: 'import', element: <ImportPage /> },
       { path: 'services', element: <ServicesPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'notifications', element: <NotificationsPage /> },

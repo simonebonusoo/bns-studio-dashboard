@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { Input, Select, Field } from '@/components/ui/Input';
-import { useCreate, useList } from '@/hooks/useEntities';
+import { Input, Select, Field, Textarea } from '@/components/ui/Input';
+import { useCreate, useList, useUpdate } from '@/hooks/useEntities';
 import { documentTotals } from '@/lib/finance';
 import { formatCurrency } from '@/lib/format';
 import { uid } from '@/lib/id';
@@ -11,37 +11,121 @@ import { nextEstimateNumber } from '@/services/documentNumbers';
 import type { Estimate, Client, Service, DocumentLineItem } from '@/types';
 import { toast } from 'sonner';
 
-export function EstimateFormModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+const EMPTY_STATE = {
+  clientId: '',
+  status: 'draft' as Estimate['status'],
+  issueDate: new Date().toISOString().slice(0, 10),
+  expiryDate: new Date(Date.now() + 15 * 864e5).toISOString().slice(0, 10),
+  depositPct: '30',
+  notes: '',
+  items: [] as DocumentLineItem[],
+};
+
+export function EstimateFormModal({
+  open,
+  onClose,
+  estimate,
+}: {
+  open: boolean;
+  onClose: () => void;
+  estimate?: Estimate;
+}) {
   const create = useCreate<Estimate>('estimates');
+  const update = useUpdate<Estimate>('estimates');
   const { data: clients } = useList<Client>('clients');
   const { data: services } = useList<Service>('services');
-  const [clientId, setClientId] = useState('');
-  const [items, setItems] = useState<DocumentLineItem[]>([]);
-  const [depositPct, setDepositPct] = useState('30');
-  const [expiry, setExpiry] = useState(new Date(Date.now() + 15 * 864e5).toISOString().slice(0, 10));
+  const [form, setForm] = useState(EMPTY_STATE);
+  const editing = Boolean(estimate);
 
-  const reset = () => { setClientId(''); setItems([]); setDepositPct('30'); };
+  useEffect(() => {
+    if (!open) return;
+    if (estimate) {
+      setForm({
+        clientId: estimate.clientId ?? '',
+        status: estimate.status,
+        issueDate: estimate.issueDate.slice(0, 10),
+        expiryDate: estimate.expiryDate?.slice(0, 10) ?? '',
+        depositPct: String(estimate.depositPct ?? 0),
+        notes: estimate.notes ?? '',
+        items: estimate.items,
+      });
+      return;
+    }
+    setForm(EMPTY_STATE);
+  }, [estimate, open]);
+
+  const setField = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
+    setForm((current) => ({ ...current, [key]: value }));
+  };
 
   const addService = (id: string) => {
-    const s = (services ?? []).find((x) => x.id === id);
-    if (!s) return;
-    setItems((prev) => [...prev, { id: uid(), serviceId: s.id, description: s.name, quantity: 1, unit: s.priceUnit, unitPrice: s.basePrice, discountPct: 0, vatRate: s.vatRate }]);
+    const service = (services ?? []).find((item) => item.id === id);
+    if (!service) return;
+    setForm((current) => ({
+      ...current,
+      items: [
+        ...current.items,
+        {
+          id: uid(),
+          serviceId: service.id,
+          description: service.name,
+          quantity: 1,
+          unit: service.priceUnit,
+          unitPrice: service.basePrice,
+          discountPct: 0,
+          vatRate: service.vatRate,
+        },
+      ],
+    }));
   };
-  const updateItem = (id: string, patch: Partial<DocumentLineItem>) => setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
-  const removeItem = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id));
 
-  const totals = documentTotals(items, { depositPct: Number(depositPct) });
+  const updateItem = (id: string, patch: Partial<DocumentLineItem>) => {
+    setForm((current) => ({
+      ...current,
+      items: current.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+    }));
+  };
+
+  const removeItem = (id: string) => {
+    setForm((current) => ({ ...current, items: current.items.filter((item) => item.id !== id) }));
+  };
+
+  const totals = documentTotals(form.items, { depositPct: Number(form.depositPct) });
 
   const submit = async () => {
-    if (items.length === 0) { toast.error('Aggiungi almeno una voce'); return; }
-    await create.mutateAsync({
-      number: await nextEstimateNumber(),
-      version: 1, clientId: clientId || undefined, status: 'draft', currency: 'EUR',
-      issueDate: new Date().toISOString().slice(0, 10), expiryDate: expiry || null,
-      items, globalDiscountPct: 0, depositPct: Number(depositPct), notes: '',
-    });
-    toast.success('Preventivo creato');
-    reset();
+    if (form.items.length === 0) {
+      toast.error('Aggiungi almeno una voce');
+      return;
+    }
+
+    const payload = {
+      clientId: form.clientId || undefined,
+      status: form.status,
+      currency: 'EUR',
+      issueDate: form.issueDate,
+      expiryDate: form.expiryDate || null,
+      items: form.items,
+      globalDiscountPct: 0,
+      depositPct: Number(form.depositPct) || 0,
+      notes: form.notes || undefined,
+      terms: '',
+    };
+
+    if (editing && estimate) {
+      await update.mutateAsync({
+        id: estimate.id,
+        patch: payload,
+      });
+      toast.success('Preventivo aggiornato');
+    } else {
+      await create.mutateAsync({
+        number: await nextEstimateNumber(),
+        version: 1,
+        ...payload,
+      });
+      toast.success('Preventivo creato');
+    }
+
     onClose();
   };
 
@@ -49,49 +133,106 @@ export function EstimateFormModal({ open, onClose }: { open: boolean; onClose: (
     <Modal
       open={open}
       onClose={onClose}
-      title="Nuovo preventivo"
+      title={editing ? `Modifica ${estimate?.number}` : 'Nuovo preventivo'}
       size="lg"
-      footer={<><Button variant="ghost" onClick={onClose}>Annulla</Button><Button onClick={submit}>Crea preventivo</Button></>}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Annulla</Button>
+          <Button onClick={submit}>{editing ? 'Salva' : 'Crea preventivo'}</Button>
+        </>
+      }
     >
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Cliente">
-            <Select value={clientId} onChange={(e) => setClientId(e.target.value)}>
+            <Select value={form.clientId} onChange={(event) => setField('clientId', event.target.value)}>
               <option value="">—</option>
-              {(clients ?? []).map((c) => <option key={c.id} value={c.id}>{c.displayName}</option>)}
+              {(clients ?? []).map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.displayName}
+                </option>
+              ))}
             </Select>
           </Field>
-          <Field label="Scadenza"><Input type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} /></Field>
+          <Field label="Stato">
+            <Select value={form.status} onChange={(event) => setField('status', event.target.value as Estimate['status'])}>
+              <option value="draft">Bozza</option>
+              <option value="internal_review">Review interna</option>
+              <option value="sent">Inviato</option>
+              <option value="viewed">Visto</option>
+              <option value="accepted">Accettato</option>
+              <option value="rejected">Rifiutato</option>
+              <option value="expired">Scaduto</option>
+              <option value="cancelled">Annullato</option>
+              <option value="superseded">Sostituito</option>
+            </Select>
+          </Field>
+          <Field label="Data emissione">
+            <Input type="date" value={form.issueDate} onChange={(event) => setField('issueDate', event.target.value)} />
+          </Field>
+          <Field label="Scadenza">
+            <Input type="date" value={form.expiryDate} onChange={(event) => setField('expiryDate', event.target.value)} />
+          </Field>
         </div>
 
         <div>
           <div className="mb-2 flex items-center justify-between">
             <span className="text-xs font-medium text-fg-subtle">Voci</span>
-            <Select className="h-8 w-48" value="" onChange={(e) => { if (e.target.value) addService(e.target.value); }}>
+            <Select className="h-8 w-48" value="" onChange={(event) => event.target.value && addService(event.target.value)}>
               <option value="">+ Aggiungi servizio…</option>
-              {(services ?? []).filter((s) => s.active).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {(services ?? []).filter((service) => service.active).map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name}
+                </option>
+              ))}
             </Select>
           </div>
           <div className="space-y-2">
-            {items.map((it) => (
-              <div key={it.id} className="flex items-center gap-2 rounded-lg border border-border p-2">
-                <Input value={it.description} onChange={(e) => updateItem(it.id, { description: e.target.value })} className="h-8 flex-1" />
-                <Input type="number" value={it.quantity} onChange={(e) => updateItem(it.id, { quantity: Number(e.target.value) })} className="h-8 w-16" title="Quantità" />
-                <Input type="number" value={it.unitPrice} onChange={(e) => updateItem(it.id, { unitPrice: Number(e.target.value) })} className="h-8 w-24" title="Prezzo" />
-                <span className="w-24 text-right text-sm font-medium">{formatCurrency(it.quantity * it.unitPrice)}</span>
-                <button onClick={() => removeItem(it.id)} aria-label="Rimuovi"><X className="h-4 w-4 text-fg-faint hover:text-danger" /></button>
+            {form.items.map((item) => (
+              <div key={item.id} className="flex items-center gap-2 rounded-lg border border-border p-2">
+                <Input value={item.description} onChange={(event) => updateItem(item.id, { description: event.target.value })} className="h-8 flex-1" />
+                <Input type="number" value={item.quantity} onChange={(event) => updateItem(item.id, { quantity: Number(event.target.value) })} className="h-8 w-16" title="Quantità" />
+                <Input type="number" value={item.unitPrice} onChange={(event) => updateItem(item.id, { unitPrice: Number(event.target.value) })} className="h-8 w-24" title="Prezzo" />
+                <span className="w-24 text-right text-sm font-medium">{formatCurrency(item.quantity * item.unitPrice)}</span>
+                <button onClick={() => removeItem(item.id)} aria-label="Rimuovi">
+                  <X className="h-4 w-4 text-fg-faint hover:text-danger" />
+                </button>
               </div>
             ))}
-            {items.length === 0 && <p className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-fg-subtle">Nessuna voce · aggiungi un servizio</p>}
+            {form.items.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-fg-subtle">
+                Nessuna voce · aggiungi un servizio
+              </p>
+            ) : null}
           </div>
         </div>
 
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Acconto %">
+            <Input type="number" value={form.depositPct} onChange={(event) => setField('depositPct', event.target.value)} className="w-24" />
+          </Field>
+          <Field label="Note">
+            <Textarea value={form.notes} onChange={(event) => setField('notes', event.target.value)} />
+          </Field>
+        </div>
+
         <div className="flex items-end justify-between border-t border-border pt-4">
-          <Field label="Acconto %"><Input type="number" value={depositPct} onChange={(e) => setDepositPct(e.target.value)} className="w-24" /></Field>
+          <div className="text-xs text-fg-subtle">
+            {editing ? 'Le modifiche aggiornano il record esistente e alimentano subito analytics e dashboard.' : 'Il preventivo sarà disponibile subito in dashboard e flussi finanziari.'}
+          </div>
           <div className="space-y-1 text-right text-sm">
-            <div className="flex justify-between gap-8"><span className="text-fg-subtle">Imponibile</span><span>{formatCurrency(totals.subtotal)}</span></div>
-            <div className="flex justify-between gap-8"><span className="text-fg-subtle">IVA</span><span>{formatCurrency(totals.vat)}</span></div>
-            <div className="flex justify-between gap-8 text-base font-bold"><span>Totale</span><span>{formatCurrency(totals.total)}</span></div>
+            <div className="flex justify-between gap-8">
+              <span className="text-fg-subtle">Imponibile</span>
+              <span>{formatCurrency(totals.subtotal)}</span>
+            </div>
+            <div className="flex justify-between gap-8">
+              <span className="text-fg-subtle">IVA</span>
+              <span>{formatCurrency(totals.vat)}</span>
+            </div>
+            <div className="flex justify-between gap-8 text-base font-bold">
+              <span>Totale</span>
+              <span>{formatCurrency(totals.total)}</span>
+            </div>
           </div>
         </div>
       </div>
