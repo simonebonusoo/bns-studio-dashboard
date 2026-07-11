@@ -4,32 +4,28 @@
 
 | Modulo | Stato |
 |--------|-------|
-| Architettura, design system, demo mode | ✅ Completo |
-| Auth demo + RBAC (8 ruoli, permessi) | ✅ Completo |
-| Dashboard con KPI e grafici dai dati reali | ✅ Completo |
-| CRM clienti (CRUD, filtri, dettaglio, CSV) | ✅ Completo |
-| Pipeline lead (drag & drop) + lista opportunità | ✅ Completo |
-| Progetti (CRUD, dettaglio, redditività) | ✅ Completo |
-| Task (kanban drag & drop, avanzamento auto) | ✅ Completo |
-| Time tracking (timer globale, timesheet) | ✅ Completo |
-| Preventivi (calcoli, PDF/stampa, → fattura) | ✅ Completo |
-| Fatture + Pagamenti (saldo aggiornato) | ✅ Completo |
-| Entrate/uscite, Analytics, Team, Calendario, File, Servizi, Notifiche, Impostazioni | ✅ Completo (funzionale) |
-| Schema DB + RLS produzione | 🟡 Predisposto (SQL pronto, non collegato) |
-| Adapter dati Supabase nel service layer | 🟡 Da implementare |
-| Contratti (firma), Milestone/Deliverable/Revisioni | 🟡 Parziale |
-| Portale cliente | 🟡 Predisposto |
-| Automazioni (trigger→azione) | 🟡 Predisposto |
-| Documenti rich text (TipTap), Import CSV completo | 🟡 Parziale |
-| Test integrazione + E2E (Playwright) | ⬜ Da aggiungere |
-| Notifiche email, integrazioni (Stripe live, Google Calendar, SDI) | ⬜ Predisposto, non attivo |
+| Monorepo `apps/web` + `apps/desktop` + `apps/api` | ✅ Completo |
+| Dashboard operativa semplificata | ✅ Completo |
+| CRM clienti essenziale | ✅ Completo |
+| Progetti, Calendario, Time tracking | ✅ Completo |
+| Team + Workload | ✅ Completo |
+| Preventivi, Contratti, Fatture, Pagamenti, Entrate/Uscite | ✅ Completo |
+| Analytics (Panoramica + Operazioni) | ✅ Completo |
+| File manager lista/griglia persistente | ✅ Completo |
+| Supabase repository layer tipizzato | ✅ Implementato (client tipizzato, mapping type-safe); da validare a runtime |
+| Auth produzione (Supabase) | ✅ Implementata (login/logout/session/reset/updateUser) |
+| Bootstrap primo owner | ✅ Funzione SQL `bootstrap_owner` + trigger profilo |
+| Supabase Storage (file manager) | ✅ Bucket privato + policy + URL firmati |
+| Schema DB + RLS | ✅ Migrazioni 0001–0006 applicate; policy client ancora conservative (sicure) |
+| Shell desktop Tauri | 🟡 Configurata, non verificabile qui senza comando `tauri` |
+| Portale cliente condiviso | ⬜ Da completare con policy read-only esplicite |
+| Test integrazione ed E2E | ⬜ Da aggiungere |
 
 ## Prossimi passi consigliati
 
-1. Implementare l'adapter Supabase nel service layer (stesse firme del repository demo).
-2. Applicare e testare l'RLS con utenti reali dei diversi ruoli.
-3. Completare il portale cliente con layout dedicato e policy RLS `client`.
-4. Aggiungere test d'integrazione ed E2E ai flussi critici.
-5. Editor documenti TipTap + versioning.
-6. Motore automazioni trigger-condition-action.
-7. Integrazioni: Stripe live, Google Calendar, fatturazione elettronica IT.
+1. Creare il primo owner (bootstrap) e validare a runtime CRUD, auth e RLS con
+   utenti di ruoli diversi (owner/accountant/collaborator).
+2. Introdurre policy client read-only per file, milestone, commenti e documenti condivisi.
+3. Aggiungere test d'integrazione ai flussi cliente→preventivo→fattura→pagamento.
+4. Valutare l'estrazione reale dei package `ui/types/config/shared`.
+5. Verificare Tauri con CLI disponibile nell'ambiente.

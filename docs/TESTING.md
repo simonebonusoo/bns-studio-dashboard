@@ -16,13 +16,13 @@ npm run test
 
 ## Da aggiungere (predisposto)
 
-- **Integrazione** (Testing Library + Vitest, ambiente jsdom già configurato): creazione cliente/lead/progetto/task, cambio fase opportunità, conversione preventivo→fattura, registrazione pagamento e aggiornamento saldo, controllo permessi.
-- **E2E** (Playwright): login demo, creazione entità, drag & drop kanban, avvio/stop timer, flusso preventivo→fattura→pagamento, analytics, logout. La cartella `tests/e2e/` è prevista dalla configurazione (`vitest` la esclude).
+- **Integrazione**: creazione cliente/progetto, conversione preventivo→fattura, registrazione pagamento, vista file lista/griglia, controllo permessi.
+- **E2E**: login demo, dashboard, timesheet, file manager, fatturazione, analytics, logout.
 
 ## Qualità
 
 ```bash
 npm run typecheck   # TypeScript strict, 0 errori
 npm run lint        # ESLint
-npm run build       # build di produzione
+npm run build:web   # build web
 ```

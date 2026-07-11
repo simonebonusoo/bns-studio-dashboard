@@ -1,33 +1,60 @@
 # Modalità demo vs produzione
 
+La selezione è **centralizzata** in `apps/web/config/env.ts` e non è
+reimplementata altrove.
+
 ## Come viene scelta
 
-`src/config/env.ts`:
-
 ```ts
-IS_DEMO = VITE_DEMO_MODE === 'true' || !VITE_SUPABASE_URL || !VITE_SUPABASE_ANON_KEY
+// apps/web/config/env.ts
+const demoFlag = VITE_DEMO_MODE === 'true';
+const hasSupabaseCredentials = Boolean(VITE_SUPABASE_URL && supabaseKey);
+IS_DEMO = demoFlag || !hasSupabaseCredentials;
+IS_SUPABASE = !IS_DEMO;
 ```
 
-Senza credenziali Supabase → **demo locale**.
+dove `supabaseKey = VITE_SUPABASE_PUBLISHABLE_KEY || VITE_SUPABASE_ANON_KEY`.
 
-## Demo locale
+- **`VITE_DEMO_MODE=true`** oppure credenziali Supabase mancanti → **demo (Dexie)**.
+- **`VITE_DEMO_MODE=false` + URL + publishable key** → **produzione (Supabase)**.
 
-- Persistenza: **IndexedDB** via Dexie (`src/data/db.ts`).
-- Seeding: `seedDatabase()` in `src/main.tsx` popola i dati alla prima apertura (idempotente, protetto da un flag in `meta`).
-- Login: verifica email/password contro lo store `users` (solo demo — nessuna password reale).
-- Reset: `resetDemo()` (Impostazioni → Ripristina demo) cancella e ricarica i dati iniziali.
+Non esiste fallback silenzioso: se in produzione una chiamata Supabase fallisce,
+l'errore viene propagato e gestito dalla UI (nessun ripiego su Dexie).
+
+## Demo locale (Dexie / IndexedDB)
+
+- Persistenza: **IndexedDB** via Dexie (`apps/web/data/db.ts`).
+- Seeding: `seedDatabase()` in `apps/web/main.tsx` popola i dati alla prima
+  apertura (idempotente). Dataset demo: Studio Dentistico Romeo, Kokoro Sushi
+  Roma, K9 Security Academy, ChemLab.
+- Login: email/password contro lo store `users` (solo demo).
 - I dati **persistono al refresh** e restano nel browser dell'utente.
 
-## Produzione
+## Produzione (Supabase)
 
-- Auth: Supabase Auth (email/password; Google/GitHub/2FA predisposti).
-- Dati: PostgreSQL + RLS; Storage per i file; Realtime dove utile.
-- Il service layer (`src/services/repository.ts`) va esteso con l'adapter Supabase mantenendo le stesse firme già usate dalla UI.
-- **Nessun secret** nel frontend: solo `VITE_SUPABASE_ANON_KEY`. La service role key resta lato Edge Functions.
+- Auth: **Supabase Auth** reale (`signInWithPassword`, `signOut`, `getSession`,
+  `onAuthStateChange`, `resetPasswordForEmail`, `updateUser`).
+- Dati: **PostgreSQL + RLS**. Client tipizzato con lo schema reale
+  (`apps/web/types/database.generated.ts`).
+- File: **Supabase Storage** (bucket privato `bns-files`, URL firmati).
+- Il repository Supabase è **implementato** (`apps/web/services/repository.ts`):
+  stesse firme `list/get/create/update/remove/hardDelete/count` usate dalla UI.
 
 ## Passaggio demo → produzione
 
-1. `supabase db push` (schema + RLS).
-2. Compila `.env` con URL e anon key.
-3. Implementa l'adapter Supabase nel service layer.
-4. (Opzionale) importa i dati demo con `supabase/seed.sql` + procedura di import.
+1. `supabase db push` — applica schema, RLS, bootstrap, Storage.
+2. Compila `.env` (in `apps/web/`):
+
+   ```
+   VITE_DEMO_MODE=false
+   VITE_SUPABASE_URL=https://<ref>.supabase.co
+   VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+   # opzionale: VITE_SUPABASE_STORAGE_BUCKET=bns-files
+   ```
+3. Registra il primo utente via Supabase Auth (dashboard o signup) e chiama il
+   bootstrap owner (vedi [BOOTSTRAP.md](BOOTSTRAP.md)).
+4. **Non** importare automaticamente i dati demo: restano solo in Dexie.
+
+> La `VITE_SUPABASE_ANON_KEY` è accettata solo per retrocompatibilità: la
+> configurazione principale è la **publishable key**. Nessun secret/service role
+> nel frontend.

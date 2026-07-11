@@ -1,0 +1,4 @@
+# Variabili d'ambiente locali — non committare mai (contengono chiavi client)
+.env
+.env.local
+.env.*.local

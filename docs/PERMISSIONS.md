@@ -8,20 +8,20 @@ Sorgente di verità: `src/features/auth/permissions.ts`. In UI si usa `useAuth()
 
 ## Permessi granulari
 
-`clients.read/write/delete`, `leads.read/write`, `projects.read/write/assign/archive`, `tasks.read/manage`, `time.log/approve`, `finances.read/manage`, `estimates.read/manage`, `invoices.read/manage`, `payments.manage`, `team.read/manage`, `files.read/write`, `settings.manage`, `audit.read`, `automations.manage`, `client_portal.access`.
+`clients.read/write/delete`, `projects.read/write/assign/archive`, `time.log/approve`, `finances.read/manage`, `estimates.read/manage`, `invoices.read/manage`, `payments.manage`, `team.read/manage`, `files.read/write`, `settings.manage`, `audit.read`, `automations.manage`, `client_portal.access`.
 
 ## Matrice sintetica
 
-| Ruolo | Clienti | Progetti | Task | Finanze | Team | Impostazioni |
+| Ruolo | Clienti | Progetti | Time | Finanze | Team | Impostazioni |
 |-------|---------|----------|------|---------|------|--------------|
 | owner | ✔ tutto | ✔ | ✔ | ✔ | ✔ | ✔ |
-| admin | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ (no eliminazione org) |
+| admin | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | project_manager | lettura/scrittura | ✔ + assegna | ✔ | lettura preventivi/fatture | lettura | — |
-| designer / developer | lettura | assegnati | ✔ (assegnati) | — | — | — |
-| collaborator | — | assegnati | assegnati | — | — | — |
+| designer / developer | lettura | assegnati | ✔ | — | — | — |
+| collaborator | — | assegnati | ✔ | — | — | — |
 | accountant | lettura | lettura | — | ✔ gestione | — | — |
-| client | — | portale (propri) | — | propri documenti | — | — |
+| client | nessun accesso privato di default | nessun accesso privato di default | — | — | — | — |
 
-I permessi finanziari (`finances.*`, `payments.manage`, ecc.) determinano anche la **visibilità dei margini/costi** nelle pagine progetto.
+I permessi finanziari determinano anche la visibilità di margini, budget e saldo documenti.
 
-In produzione questi permessi sono rafforzati dall'RLS (vedi [RLS.md](RLS.md)): il frontend nasconde, il database blocca.
+In produzione l'RLS rafforza questi permessi. Il ruolo `client` oggi è bloccato di default finché non verranno introdotte policy read-only su dati esplicitamente condivisi.

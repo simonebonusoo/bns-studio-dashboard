@@ -17,5 +17,8 @@ Note interne, margini, costi, tariffe interne, workload, altri clienti, commenti
 ## Implementazione
 
 - **Dati**: già presenti i campi `client_visible` (task, milestone, file) e `visibility` (commenti).
-- **RLS**: le policy per il ruolo `client` sono documentate come TODO in `supabase/migrations/0002_rls.sql` — vanno filtrate su associazione cliente↔utente e sui flag di visibilità.
+- **RLS**: oggi il ruolo `client` è **bloccato di default** (nessun accesso ai
+  dati interni) — stato sicuro. Le policy read-only per il portale vanno
+  aggiunte come nuova migration, filtrate su associazione cliente↔utente e sui
+  flag di visibilità. Le policy interne sono in `0005_rls_baseline.sql`.
 - **UI**: le pagine `/portal`, `/portal/projects/:id`, approvazioni deliverable sono da aggiungere come layout separato con guardia sul permesso `client_portal.access`.
