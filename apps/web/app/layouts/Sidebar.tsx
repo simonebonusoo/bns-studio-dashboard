@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { NAV } from '@/app/navigation';
 import { brandConfig } from '@/config/brandConfig';
+import { BrandIcon } from '@/components/branding/BrandIcon';
 import { IS_DEMO } from '@/config/env';
 import { useUI, SIDEBAR_MIN, SIDEBAR_MAX } from '@/stores/ui';
 import { useAuth } from '@/stores/auth';
@@ -19,7 +20,31 @@ export function SidebarNav({
   const can = useAuth((s) => s.can);
 
   return (
-    <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-3">
+    <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-3 pt-2">
+      <div className="px-1">
+        {collapsed ? (
+          <div className="flex justify-center">
+            <div className="rounded-2xl border border-border bg-surface-2/80 p-2 shadow-[0_18px_32px_-28px_rgba(15,15,16,0.85)]">
+              <BrandIcon className="h-9 w-9" />
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-[22px] border border-border bg-surface-2/85 p-3.5 shadow-[0_22px_40px_-32px_rgba(15,15,16,0.9)]">
+            <div className="flex items-center gap-3">
+              <BrandIcon className="h-11 w-11 shadow-sm ring-1 ring-black/5 dark:ring-white/10" />
+              <div className="min-w-0">
+                <p className="truncate text-[1.05rem] font-semibold tracking-[-0.04em] text-fg">
+                  {brandConfig.productName}
+                </p>
+                <p className="mt-0.5 text-xs font-medium text-fg-faint">
+                  {brandConfig.version}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {NAV.map((group, gi) => {
         const items = group.items.filter((it) => !it.permission || can(it.permission));
         if (items.length === 0) return null;
@@ -73,23 +98,6 @@ export function SidebarNav({
   );
 }
 
-function BrandHeader({ collapsed }: { collapsed: boolean }) {
-  return (
-    <>
-      <img
-        src={collapsed ? brandConfig.logos.compact : brandConfig.logos.light}
-        alt={brandConfig.name}
-        className={cn('dark:hidden', collapsed ? 'h-7 w-7' : 'h-[22px]')}
-      />
-      <img
-        src={collapsed ? brandConfig.logos.compact : brandConfig.logos.dark}
-        alt={brandConfig.name}
-        className={cn('hidden dark:block', collapsed ? 'h-7 w-7' : 'h-[22px]')}
-      />
-    </>
-  );
-}
-
 /** Sidebar desktop: larghezza persistente e ridimensionabile con maniglia. */
 export function Sidebar() {
   const collapsed = useUI((s) => s.sidebarCollapsed);
@@ -128,8 +136,7 @@ export function Sidebar() {
       style={{ width: collapsed ? 64 : width }}
       className="relative sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-200 ease-smooth md:flex"
     >
-      <div className="flex h-14 items-center justify-between px-3">
-        <BrandHeader collapsed={collapsed} />
+      <div className="flex h-12 items-center justify-end px-3 pt-2">
         <button
           onClick={toggle}
           className="press rounded-md p-1.5 text-fg-faint hover:bg-surface-2 hover:text-fg-subtle"

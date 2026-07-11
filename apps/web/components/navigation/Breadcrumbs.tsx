@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
+import { brandConfig } from '@/config/brandConfig';
 
 /** Etichette leggibili per i segmenti di percorso noti. */
 const LABELS: Record<string, string> = {
@@ -29,7 +30,7 @@ export function Breadcrumbs() {
   const parts = pathname.split('/').filter(Boolean);
 
   const crumbs = [
-    { label: 'BNS Studio', to: '/' },
+    { label: brandConfig.productName, to: '/' },
     ...parts.map((part, i) => {
       const to = '/' + parts.slice(0, i + 1).join('/');
       const isId = !LABELS[part] && i > 0;

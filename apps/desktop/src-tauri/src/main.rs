@@ -4,5 +4,5 @@
 fn main() {
     tauri::Builder::default()
         .run(tauri::generate_context!())
-        .expect("errore nell'avvio di BNS Studio OS");
+        .expect("errore nell'avvio di BnsStudio");
 }

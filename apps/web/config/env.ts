@@ -1,7 +1,7 @@
 /**
  * Configurazione ambiente centralizzata.
  *
- * BNS Studio OS ha due modalità mutuamente esclusive, selezionate qui una volta
+ * BnsStudio ha due modalità mutuamente esclusive, selezionate qui una volta
  * sola (nessun altro modulo deve reimplementare questa logica):
  *
  *   • DEMO      → dati in IndexedDB (Dexie). Attiva se VITE_DEMO_MODE=true
@@ -22,7 +22,7 @@ const supabaseKey =
   ((raw.VITE_SUPABASE_ANON_KEY as string | undefined) ?? '');
 
 export const env = {
-  appName: (raw.VITE_APP_NAME as string) ?? 'BNS Studio OS',
+  appName: (raw.VITE_APP_NAME as string) ?? 'BnsStudio',
   appUrl: (raw.VITE_APP_URL as string) ?? 'http://localhost:5173',
   supabaseUrl: (raw.VITE_SUPABASE_URL as string) ?? '',
   /** Chiave client pubblica (publishable o anon). Mai secret/service role. */

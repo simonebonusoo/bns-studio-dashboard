@@ -25,7 +25,7 @@ async function bootstrap() {
     <StrictMode>
       <ErrorBoundary>
         <AppProviders>
-          <Suspense fallback={<LoadingState label="Avvio BNS Studio OS…" />}>
+          <Suspense fallback={<LoadingState label="Avvio BnsStudio…" />}>
             <RouterProvider router={router} />
           </Suspense>
         </AppProviders>

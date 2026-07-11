@@ -78,7 +78,7 @@ export default function SettingsPage() {
       <Card>
         <CardHeader title="Disclaimer" icon={<AlertTriangle className="h-4 w-4 text-warning" />} />
         <ul className="list-disc space-y-1.5 p-4 pl-8 text-sm text-fg-subtle">
-          <li>BNS Studio OS è uno strumento gestionale interno; non sostituisce consulenza fiscale o legale.</li>
+          <li>BnsStudio è uno strumento gestionale interno; non sostituisce consulenza fiscale o legale.</li>
           <li>Le fatture generate devono essere verificate: il sistema non è un servizio certificato di fatturazione elettronica.</li>
           <li>I dati finanziari dipendono dalla correttezza dei dati inseriti.</li>
           <li>Preventivi e contratti vanno verificati prima dell'invio.</li>

@@ -19,7 +19,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error) {
     // In produzione qui si invierebbe a un servizio di logging.
-    console.error('[BNS Studio OS] Errore applicativo:', error);
+    console.error('[BnsStudio] Errore applicativo:', error);
   }
 
   render() {

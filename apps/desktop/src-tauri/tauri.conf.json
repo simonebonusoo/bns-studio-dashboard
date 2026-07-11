@@ -1,18 +1,18 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "BNS Studio OS",
+  "productName": "BnsStudio",
   "version": "0.1.0",
   "identifier": "it.bnsstudio.os",
   "build": {
     "frontendDist": "../../web/dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm --prefix ../../.. run dev:web -- --host 127.0.0.1 --port 5173 --strictPort",
-    "beforeBuildCommand": "npm --prefix ../../.. run build:web"
+    "beforeDevCommand": "npm --prefix ../.. exec --workspace @bns/web vite -- --host 127.0.0.1 --port 5173 --strictPort",
+    "beforeBuildCommand": "npm --prefix ../.. run build:web"
   },
   "app": {
     "windows": [
       {
-        "title": "BNS Studio OS",
+        "title": "BnsStudio",
         "width": 1440,
         "height": 900,
         "minWidth": 1120,

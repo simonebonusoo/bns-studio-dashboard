@@ -6,15 +6,17 @@
  */
 export const brandConfig = {
   name: 'BNS Studio',
-  productName: 'BNS Studio OS',
-  shortName: 'BNS',
-  description: 'Il sistema operativo interno dello studio creativo BNS Studio.',
+  productName: 'BnsStudio',
+  shortName: 'BnsStudio',
+  version: 'v1.0.0',
+  description: 'Il workspace operativo di BNS Studio.',
 
   logos: {
-    light: '/brand/logo-light.svg',
-    dark: '/brand/logo-dark.svg',
-    compact: '/brand/logo-compact.svg',
-    favicon: '/favicon.svg',
+    light: '/favicon.png',
+    dark: '/favicon.png',
+    compact: '/favicon.png',
+    icon: '/favicon.png',
+    favicon: '/favicon.png',
   },
 
   colors: {
@@ -41,7 +43,7 @@ export const brandConfig = {
     locale: 'it-IT',
     vatRate: 22,
     paymentTermsDays: 30,
-    footer: 'BNS Studio — documento generato con BNS Studio OS. Verificare prima dell’invio.',
+    footer: 'BNS Studio — documento generato con BnsStudio. Verificare prima dell’invio.',
     estimatePrefix: 'PREV',
     invoicePrefix: 'FAT',
     contractPrefix: 'CTR',

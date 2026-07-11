@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/stores/auth';
 import { brandConfig } from '@/config/brandConfig';
+import { BrandIcon } from '@/components/branding/BrandIcon';
 import { IS_DEMO } from '@/config/env';
 import { Button } from '@/components/ui/Button';
 import { Input, Field } from '@/components/ui/Input';
@@ -50,10 +51,14 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg p-4">
       <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center gap-3">
-          <img src={brandConfig.logos.light} alt={brandConfig.name} className="h-7 dark:hidden" />
-          <img src={brandConfig.logos.dark} alt={brandConfig.name} className="hidden h-7 dark:block" />
-          <p className="text-sm text-fg-subtle">{brandConfig.description}</p>
+        <div className="mb-8 flex flex-col items-center gap-3 text-center">
+          <BrandIcon className="h-16 w-16 shadow-sm ring-1 ring-black/5 dark:ring-white/10" />
+          <div className="space-y-1">
+            <p className="text-[1.75rem] font-semibold tracking-[-0.045em] text-fg">
+              {brandConfig.productName}
+            </p>
+            <p className="text-sm text-fg-subtle">{brandConfig.description}</p>
+          </div>
         </div>
 
         <form onSubmit={submit} className="space-y-4 rounded-card border border-border bg-surface p-6 shadow-card">

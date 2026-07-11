@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { brandConfig } from '@/config/brandConfig';
+import { BrandIcon } from '@/components/branding/BrandIcon';
 import { Button } from '@/components/ui/Button';
 import { Input, Field } from '@/components/ui/Input';
 import { ArrowLeft } from 'lucide-react';
@@ -31,9 +32,14 @@ export default function ForgotPasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg p-4">
       <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center gap-3">
-          <img src={brandConfig.logos.light} alt={brandConfig.name} className="h-7 dark:hidden" />
-          <img src={brandConfig.logos.dark} alt={brandConfig.name} className="hidden h-7 dark:block" />
+        <div className="mb-8 flex flex-col items-center gap-3 text-center">
+          <BrandIcon className="h-14 w-14 shadow-sm ring-1 ring-black/5 dark:ring-white/10" />
+          <div className="space-y-1">
+            <p className="text-[1.6rem] font-semibold tracking-[-0.04em] text-fg">
+              {brandConfig.productName}
+            </p>
+            <p className="text-sm text-fg-subtle">{brandConfig.description}</p>
+          </div>
         </div>
         <div className="space-y-4 rounded-card border border-border bg-surface p-6 shadow-card">
           <h1 className="text-lg font-semibold">Recupera password</h1>

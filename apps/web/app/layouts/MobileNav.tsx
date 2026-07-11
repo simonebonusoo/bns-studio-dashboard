@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { brandConfig } from '@/config/brandConfig';
 import { useUI } from '@/stores/ui';
 import { SidebarNav } from './Sidebar';
 
@@ -27,9 +26,7 @@ export function MobileNav() {
     <div className="fixed inset-0 z-50 md:hidden">
       <div className="absolute inset-0 animate-overlay-in bg-black/40" onClick={() => setOpen(false)} aria-hidden />
       <div className="absolute left-0 top-0 flex h-full w-72 animate-slide-in-right flex-col border-r border-border bg-surface">
-        <div className="flex h-14 items-center justify-between px-3">
-          <img src={brandConfig.logos.light} alt={brandConfig.name} className="h-[22px] dark:hidden" />
-          <img src={brandConfig.logos.dark} alt={brandConfig.name} className="hidden h-[22px] dark:block" />
+        <div className="flex h-12 items-center justify-end px-3 pt-2">
           <button onClick={() => setOpen(false)} className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2" aria-label="Chiudi">
             <X className="h-5 w-5" />
           </button>

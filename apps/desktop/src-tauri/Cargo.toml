@@ -1,7 +1,7 @@
 [package]
 name = "bns-studio-os"
 version = "0.1.0"
-description = "BNS Studio OS — gestionale desktop"
+description = "BnsStudio — gestionale desktop"
 authors = ["BNS Studio"]
 edition = "2021"
 
