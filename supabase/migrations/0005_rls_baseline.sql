@@ -28,7 +28,6 @@ language sql stable security definer set search_path = public as $$
       and m.deleted_at is null
   );
 $$;
-
 create or replace function public.org_role(org uuid)
 returns member_role
 language sql stable security definer set search_path = public as $$
@@ -37,19 +36,16 @@ language sql stable security definer set search_path = public as $$
   where m.organization_id = org and p.id = auth.uid() and m.deleted_at is null
   limit 1;
 $$;
-
 create or replace function public.can_finance(org uuid)
 returns boolean
 language sql stable security definer set search_path = public as $$
   select public.org_role(org) in ('owner','admin','project_manager','accountant');
 $$;
-
 create or replace function public.is_internal_org_member(org uuid)
 returns boolean
 language sql stable security definer set search_path = public as $$
   select public.is_org_member(org) and public.org_role(org) <> 'client';
 $$;
-
 -- ─────────────── Abilita RLS ovunque ───────────────
 do $$
 declare t text;
@@ -63,16 +59,13 @@ begin
     execute format('alter table %I enable row level security;', t);
   end loop;
 end $$;
-
 -- ─────────────── Profili e organizzazioni ───────────────
 drop policy if exists profiles_self on profiles;
 create policy profiles_self on profiles
   for all using (id = auth.uid()) with check (id = auth.uid());
-
 drop policy if exists org_member_read on organizations;
 create policy org_member_read on organizations
   for select using (public.is_internal_org_member(id));
-
 -- ─────────────── Policy standard "membro interno" ───────────────
 do $$
 declare t text;
@@ -90,7 +83,6 @@ begin
     $f$, t);
   end loop;
 end $$;
-
 -- ─────────────── Tabelle finanziarie ───────────────
 do $$
 declare t text;

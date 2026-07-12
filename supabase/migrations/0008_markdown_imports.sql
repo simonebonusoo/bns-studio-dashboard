@@ -15,31 +15,25 @@ create table if not exists public.markdown_imports (
   updated_at timestamptz not null default now(),
   deleted_at timestamptz
 );
-
 create index if not exists markdown_imports_org_created_idx
   on public.markdown_imports (organization_id, created_at desc);
-
 alter table public.markdown_imports enable row level security;
-
 drop policy if exists markdown_imports_select on public.markdown_imports;
 create policy markdown_imports_select
   on public.markdown_imports
   for select
   using (public.is_internal_org_member(organization_id));
-
 drop policy if exists markdown_imports_insert on public.markdown_imports;
 create policy markdown_imports_insert
   on public.markdown_imports
   for insert
   with check (public.is_internal_org_member(organization_id));
-
 drop policy if exists markdown_imports_update on public.markdown_imports;
 create policy markdown_imports_update
   on public.markdown_imports
   for update
   using (public.is_internal_org_member(organization_id))
   with check (public.is_internal_org_member(organization_id));
-
 drop policy if exists markdown_imports_delete on public.markdown_imports;
 create policy markdown_imports_delete
   on public.markdown_imports

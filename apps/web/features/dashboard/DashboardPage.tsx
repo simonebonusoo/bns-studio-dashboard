@@ -23,7 +23,7 @@ import { invoiceBalance } from '@/lib/finance';
 import type { ActivityLog, Contract, Estimate, Invoice, Member, Payment, Project } from '@/types';
 
 export default function DashboardPage() {
-  const { data, isLoading, isError } = useAnalytics();
+  const { data, isLoading, isError, error } = useAnalytics();
   const navigate = useNavigate();
   const member = useAuth((state) => state.member);
   const timer = useTimer();
@@ -36,7 +36,20 @@ export default function DashboardPage() {
   const { data: contracts } = useList<Contract>('contracts');
 
   if (isLoading) return <LoadingState />;
-  if (isError || !data) return <ErrorState />;
+  if (isError || !data) {
+    if (import.meta.env.DEV && error) {
+      console.error('[BnsStudio] Dashboard analytics failed', error);
+    }
+    return (
+      <ErrorState
+        message={
+          import.meta.env.DEV && error instanceof Error
+            ? `Dashboard non caricata: ${error.message}`
+            : undefined
+        }
+      />
+    );
+  }
 
   const { summary } = data;
   const activeProjects = (projects ?? [])

@@ -267,8 +267,22 @@ interface DbTableQuery {
 }
 
 function dbTable<K extends TableName>(name: K): DbTableQuery {
-  const from = getSupabaseClient().from as unknown as (relation: string) => unknown;
-  return from(name) as DbTableQuery;
+  const client = getSupabaseClient() as unknown as { from: (relation: string) => unknown };
+  return client.from(name) as DbTableQuery;
+}
+
+function throwSupabaseError(tableName: TableName, operation: string, error: PostgrestError): never {
+  if (import.meta.env.DEV) {
+    console.error('[BnsStudio] Supabase query failed', {
+      table: tableName,
+      operation,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+  }
+  throw error;
 }
 
 interface SupabaseRepoOptions {
@@ -284,7 +298,7 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
       let query = dbTable(tableName).select('*');
       if (softDelete) query = query.is('deleted_at', null);
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) throwSupabaseError(tableName, 'list', error);
       const rows = (data ?? []).map((row) => deserialize<T>(row));
       return filter ? rows.filter(filter) : rows;
     },
@@ -293,7 +307,7 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
       let query = dbTable(tableName).select('*').eq('id', id);
       if (softDelete) query = query.is('deleted_at', null);
       const { data, error } = await query.maybeSingle();
-      if (error) throw error;
+      if (error) throwSupabaseError(tableName, 'get', error);
       return data ? deserialize<T>(data) : undefined;
     },
 
@@ -316,7 +330,7 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
         .select('*')
         .single();
 
-      if (error) throw error;
+      if (error) throwSupabaseError(tableName, 'create', error);
       if (!row) throw new Error(`Creazione ${tableName} non riuscita: nessuna riga restituita.`);
       await recordRepositoryActivity(tableName, 'create', String(row.id));
       return deserialize<T>(row);
@@ -330,7 +344,7 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
         .select('*')
         .single();
 
-      if (error) throw error;
+      if (error) throwSupabaseError(tableName, 'update', error);
       if (!row) throw new Error(`Aggiornamento ${tableName} non riuscito: record ${id} inesistente.`);
       await recordRepositoryActivity(
         tableName,
@@ -343,19 +357,19 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
     async remove(id) {
       if (!softDelete) {
         const { error } = await dbTable(tableName).delete().eq('id', id);
-        if (error) throw error;
+        if (error) throwSupabaseError(tableName, 'delete', error);
         await recordRepositoryActivity(tableName, 'delete', id);
         return;
       }
       const payload = serialize({ deletedAt: nowISO(), updatedAt: nowISO() });
       const { error } = await dbTable(tableName).update(payload).eq('id', id);
-      if (error) throw error;
+      if (error) throwSupabaseError(tableName, 'remove', error);
       await recordRepositoryActivity(tableName, 'delete', id);
     },
 
     async hardDelete(id) {
       const { error } = await dbTable(tableName).delete().eq('id', id);
-      if (error) throw error;
+      if (error) throwSupabaseError(tableName, 'hardDelete', error);
       await recordRepositoryActivity(tableName, 'delete', id);
     },
 
@@ -363,7 +377,7 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
       let query = dbTable(tableName).select('*', { count: 'exact', head: true });
       if (softDelete) query = query.is('deleted_at', null);
       const { count, error } = await query;
-      if (error) throw error;
+      if (error) throwSupabaseError(tableName, 'count', error);
       return count ?? 0;
     },
   };

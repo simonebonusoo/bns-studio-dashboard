@@ -6,7 +6,6 @@
 -- ============================================================================
 
 create extension if not exists "pgcrypto";
-
 -- ─────────────── Organizzazioni e membri ───────────────
 create table organizations (
   id uuid primary key default gen_random_uuid(),
@@ -18,7 +17,6 @@ create table organizations (
   vat text,
   created_at timestamptz not null default now()
 );
-
 -- profiles: 1:1 con auth.users
 create table profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -28,12 +26,10 @@ create table profiles (
   avatar_color text default '#71717a',
   created_at timestamptz not null default now()
 );
-
 create type member_role as enum (
   'owner','admin','project_manager','designer','developer','collaborator','accountant','client'
 );
 create type member_status as enum ('invited','active','unavailable','suspended','inactive');
-
 create table members (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -57,7 +53,6 @@ create table members (
   unique (organization_id, email)
 );
 create index on members (organization_id);
-
 -- ─────────────── CRM ───────────────
 create table companies (
   id uuid primary key default gen_random_uuid(),
@@ -69,9 +64,7 @@ create table companies (
   deleted_at timestamptz
 );
 create index on companies (organization_id);
-
 create type client_status as enum ('lead','prospect','active','inactive','past_client','partner','archived');
-
 create table clients (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -93,7 +86,6 @@ create table clients (
   deleted_at timestamptz
 );
 create index on clients (organization_id, status);
-
 create table opportunities (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -115,7 +107,6 @@ create table opportunities (
   deleted_at timestamptz
 );
 create index on opportunities (organization_id, stage);
-
 -- ─────────────── Servizi ───────────────
 create table services (
   id uuid primary key default gen_random_uuid(),
@@ -129,11 +120,9 @@ create table services (
   deleted_at timestamptz
 );
 create index on services (organization_id);
-
 -- ─────────────── Progetti / task ───────────────
 create type project_status as enum
   ('lead','draft','planned','active','waiting_client','review','paused','completed','cancelled','archived');
-
 create table projects (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -157,7 +146,6 @@ create table projects (
   unique (organization_id, code)
 );
 create index on projects (organization_id, status);
-
 create table milestones (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -170,7 +158,6 @@ create table milestones (
   deleted_at timestamptz
 );
 create index on milestones (organization_id, project_id);
-
 create table tasks (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -187,7 +174,6 @@ create table tasks (
   deleted_at timestamptz
 );
 create index on tasks (organization_id, project_id, status);
-
 -- ─────────────── Tempo ───────────────
 create table time_entries (
   id uuid primary key default gen_random_uuid(),
@@ -205,7 +191,6 @@ create table time_entries (
   deleted_at timestamptz
 );
 create index on time_entries (organization_id, member_id, date);
-
 -- ─────────────── Documenti finanziari ───────────────
 create table estimates (
   id uuid primary key default gen_random_uuid(),
@@ -224,7 +209,6 @@ create table estimates (
   unique (organization_id, number)
 );
 create index on estimates (organization_id, status);
-
 create table invoices (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -243,7 +227,6 @@ create table invoices (
   unique (organization_id, number)
 );
 create index on invoices (organization_id, status);
-
 create table payments (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -258,7 +241,6 @@ create table payments (
   deleted_at timestamptz
 );
 create index on payments (organization_id, invoice_id);
-
 create table transactions (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -272,7 +254,6 @@ create table transactions (
   deleted_at timestamptz
 );
 create index on transactions (organization_id, type, date);
-
 create table contracts (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -288,7 +269,6 @@ create table contracts (
   deleted_at timestamptz,
   unique (organization_id, number)
 );
-
 -- ─────────────── Risorse e collaborazione ───────────────
 create table files (
   id uuid primary key default gen_random_uuid(),
@@ -304,7 +284,6 @@ create table files (
   updated_at timestamptz not null default now(),
   deleted_at timestamptz
 );
-
 create table calendar_events (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -317,7 +296,6 @@ create table calendar_events (
   updated_at timestamptz not null default now(),
   deleted_at timestamptz
 );
-
 create table comments (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -329,7 +307,6 @@ create table comments (
   deleted_at timestamptz
 );
 create index on comments (organization_id, entity_type, entity_id);
-
 create table notifications (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -340,7 +317,6 @@ create table notifications (
   updated_at timestamptz not null default now()
 );
 create index on notifications (organization_id, user_id, read);
-
 create table activity_logs (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -350,7 +326,6 @@ create table activity_logs (
   created_at timestamptz not null default now()
 );
 create index on activity_logs (organization_id, entity_type);
-
 create table documents (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,

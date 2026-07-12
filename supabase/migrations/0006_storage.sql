@@ -15,7 +15,6 @@ values ('bns-files', 'bns-files', false, 52428800)
 on conflict (id) do update
   set public = excluded.public,
       file_size_limit = excluded.file_size_limit;
-
 -- Isolamento per organizzazione tramite il primo segmento del path.
 drop policy if exists "bns_files_org_read" on storage.objects;
 create policy "bns_files_org_read" on storage.objects
@@ -24,7 +23,6 @@ create policy "bns_files_org_read" on storage.objects
     bucket_id = 'bns-files'
     and public.is_internal_org_member(((storage.foldername(name))[1])::uuid)
   );
-
 drop policy if exists "bns_files_org_insert" on storage.objects;
 create policy "bns_files_org_insert" on storage.objects
   for insert to authenticated
@@ -32,7 +30,6 @@ create policy "bns_files_org_insert" on storage.objects
     bucket_id = 'bns-files'
     and public.is_internal_org_member(((storage.foldername(name))[1])::uuid)
   );
-
 drop policy if exists "bns_files_org_update" on storage.objects;
 create policy "bns_files_org_update" on storage.objects
   for update to authenticated
@@ -44,7 +41,6 @@ create policy "bns_files_org_update" on storage.objects
     bucket_id = 'bns-files'
     and public.is_internal_org_member(((storage.foldername(name))[1])::uuid)
   );
-
 drop policy if exists "bns_files_org_delete" on storage.objects;
 create policy "bns_files_org_delete" on storage.objects
   for delete to authenticated
