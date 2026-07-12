@@ -10,6 +10,7 @@ import { useDetail, useList, useUpdate, useRemove } from '@/hooks/useEntities';
 import { useAuth } from '@/stores/auth';
 import { ROLE_LABELS, ROLES } from '@/types/enums';
 import { formatHours } from '@/lib/format';
+import { memberAvatarProps } from '@/lib/memberAvatar';
 import type { Member, Project, TimeEntry } from '@/types';
 import { toast } from 'sonner';
 
@@ -80,7 +81,7 @@ export function MemberDetailDrawer({ memberId, onClose }: { memberId: string | n
       >
         <div className="space-y-5">
           <div className="flex items-center gap-3">
-            <Avatar name={`${member.firstName} ${member.lastName}`} color={member.avatarColor} size="lg" />
+            <Avatar {...memberAvatarProps(member)} size="lg" />
             <div className="min-w-0">
               <div className="flex flex-wrap gap-1.5">
                 <Badge tone="accent">{ROLE_LABELS[member.role]}</Badge>

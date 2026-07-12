@@ -5,6 +5,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { LoadingState } from '@/components/ui/States';
 import { useList } from '@/hooks/useEntities';
+import { memberAvatarProps } from '@/lib/memberAvatar';
 import { ROLE_LABELS } from '@/types/enums';
 import { MemberDetailDrawer } from './MemberDetailDrawer';
 import type { Member, TimeEntry } from '@/types';
@@ -37,7 +38,7 @@ export default function TeamPage() {
               className="press cursor-pointer p-4 transition-colors hover:border-border-strong"
             >
               <div className="flex items-center gap-3">
-                <Avatar name={`${member.firstName} ${member.lastName}`} color={member.avatarColor} size="lg" />
+                <Avatar {...memberAvatarProps(member)} size="lg" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{member.firstName} {member.lastName}</p>
                   <p className="truncate text-sm text-fg-subtle">{member.jobTitle}</p>

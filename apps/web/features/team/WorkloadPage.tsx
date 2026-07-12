@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Hash, MoreHorizontal, Pause, Pencil, Play, Send, Square, Trash2, X } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -14,6 +14,7 @@ import { useTimer } from '@/features/time-tracking/timerStore';
 import { formatHours, formatRelative } from '@/lib/format';
 import { todayISO } from '@/lib/id';
 import { cn } from '@/lib/cn';
+import { memberAvatarProps } from '@/lib/memberAvatar';
 import type { Comment, Member, Project, TimeEntry } from '@/types';
 import { toast } from 'sonner';
 
@@ -61,6 +62,9 @@ export default function WorkloadPage() {
   const [editingDraft, setEditingDraft] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Comment | null>(null);
   const [, forceTick] = useState(0);
+  const messagesRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const scrollToOwnMessageRef = useRef(false);
 
   useEffect(() => {
     if (!timer.running) return;
@@ -102,17 +106,35 @@ export default function WorkloadPage() {
   };
 
   const publishUpdate = async () => {
-    if (!member || !selectedProject || !draft.trim()) return;
+    const content = draft.trim();
+    if (!member || !selectedProject || !content || createComment.isPending) return;
     await createComment.mutateAsync({
       entityType: 'project',
       entityId: selectedProject.id,
       authorId: member.id,
-      content: draft.trim(),
+      content,
       visibility: 'internal',
       edited: false,
     });
+    scrollToOwnMessageRef.current = true;
     setDraft('');
+    composerRef.current?.focus();
     toast.success('Aggiornamento pubblicato');
+  };
+
+  useEffect(() => {
+    if (!scrollToOwnMessageRef.current) return;
+    scrollToOwnMessageRef.current = false;
+    requestAnimationFrame(() => {
+      const viewport = messagesRef.current;
+      if (viewport) viewport.scrollTop = viewport.scrollHeight;
+    });
+  }, [projectComments.length]);
+
+  const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    void publishUpdate();
   };
 
   const deleteComment = async () => {
@@ -180,7 +202,7 @@ export default function WorkloadPage() {
   if (isLoading) return <LoadingState />;
 
   return (
-    <div className="flex min-h-full flex-col gap-5">
+    <div className="flex min-h-full flex-col gap-5 xl:h-full xl:overflow-hidden">
       <PageHeader
         title="Hub"
         description="Canali progetto, aggiornamenti interni e timer contestualizzato nello stesso spazio."
@@ -193,8 +215,8 @@ export default function WorkloadPage() {
         }
       />
 
-      <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
-        <Card className="flex min-h-0 flex-col overflow-hidden">
+      <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[280px_minmax(0,1fr)_320px] xl:grid-rows-[minmax(0,1fr)] xl:overflow-hidden">
+        <Card className="flex min-h-0 flex-col overflow-hidden xl:h-full">
           <div className="shrink-0 border-b border-border px-4 py-3">
             <p className="text-sm font-semibold">Canali progetto</p>
             <p className="text-xs text-fg-subtle">Ogni progetto diventa il suo contesto interno operativo.</p>
@@ -227,7 +249,7 @@ export default function WorkloadPage() {
           </div>
         </Card>
 
-        <div className="min-h-0">
+        <div className="min-h-0 xl:h-full xl:overflow-hidden">
           <Card className="flex h-full min-h-[560px] flex-col overflow-hidden xl:min-h-0">
             <div className="flex shrink-0 items-start justify-between border-b border-border px-4 py-3">
               <div>
@@ -249,7 +271,7 @@ export default function WorkloadPage() {
               <EmptyState title="Nessun canale selezionato" description="Scegli un progetto dalla colonna sinistra per entrare nel suo contesto interno." />
             ) : (
               <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
-                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1">
+                <div ref={messagesRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1">
                   {projectComments.map((comment) => {
                     const author = comment.authorId ? commentAuthors.get(comment.authorId) : undefined;
                     const canEdit = canManageComment(comment);
@@ -258,11 +280,7 @@ export default function WorkloadPage() {
                       <div key={comment.id} className="rounded-xl border border-border bg-surface px-4 py-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-3">
-                            <Avatar
-                              name={author ? `${author.firstName} ${author.lastName}` : 'Sistema'}
-                              color={author?.avatarColor}
-                              size="sm"
-                            />
+                            {author ? <Avatar {...memberAvatarProps(author)} size="sm" /> : <Avatar name="Sistema" size="sm" />}
                             <div className="min-w-0">
                               <p className="text-sm font-medium">
                                 {author ? `${author.firstName} ${author.lastName}` : 'Sistema'}
@@ -343,8 +361,10 @@ export default function WorkloadPage() {
 
                 <div className="shrink-0 space-y-3 border-t border-border pt-4">
                   <textarea
+                    ref={composerRef}
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
+                    onKeyDown={handleComposerKeyDown}
                     className="min-h-28 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm outline-none transition-colors focus:border-border-strong"
                     placeholder={selectedProject ? `Scrivi un aggiornamento per ${selectedProject.name}…` : 'Scrivi un aggiornamento…'}
                   />
@@ -352,7 +372,7 @@ export default function WorkloadPage() {
                     <p className="text-xs text-fg-subtle">
                       I messaggi restano interni e collegati al progetto.
                     </p>
-                    <Button onClick={publishUpdate} loading={createComment.isPending} disabled={!selectedProject || !draft.trim()}>
+                    <Button onClick={publishUpdate} loading={createComment.isPending} disabled={!selectedProject || !draft.trim() || createComment.isPending}>
                       <Send className="h-4 w-4" /> Pubblica
                     </Button>
                   </div>
@@ -362,7 +382,7 @@ export default function WorkloadPage() {
           </Card>
         </div>
 
-        <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1">
+        <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1 xl:h-full">
           <Card className="p-4">
             <p className="text-sm font-semibold">Timer integrato</p>
             <p className="mt-1 text-sm text-fg-subtle">
@@ -412,11 +432,7 @@ export default function WorkloadPage() {
                   <div key={teamMember.id} className="px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <Avatar
-                          name={`${teamMember.firstName} ${teamMember.lastName}`}
-                          color={teamMember.avatarColor}
-                          size="sm"
-                        />
+                        <Avatar {...memberAvatarProps(teamMember)} size="sm" />
                         <div>
                           <p className="text-sm font-medium">{teamMember.firstName} {teamMember.lastName}</p>
                           <p className="text-xs text-fg-subtle">{formatHours(metrics.loggedMinutes)} nel mese</p>

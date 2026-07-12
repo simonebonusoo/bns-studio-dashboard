@@ -132,14 +132,14 @@ export default function CalendarPage() {
   if (isLoading) return <LoadingState />;
 
   return (
-    <div className="flex min-h-full flex-col gap-4">
+    <div className="flex min-h-full flex-col gap-4 md:h-full md:overflow-hidden">
       <PageHeader
         title="Calendario"
         description="Eventi e milestone operative"
         actions={<Button onClick={() => createAt(view === 'agenda' ? new Date() : cursor)}><Plus className="h-4 w-4" /> Nuovo evento</Button>}
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" onClick={() => setCursor(new Date())}>Oggi</Button>
           <Button variant="ghost" size="icon" onClick={() => step(-1)}><ChevronLeft className="h-4 w-4" /></Button>
@@ -155,7 +155,7 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1">
+      <div className="min-h-[520px] flex-1 md:min-h-0">
         {view === 'month' && <MonthView cursor={cursor} itemsOn={itemsOn} onCreate={createAt} onOpen={openItem} onDropDay={dropOnDay} setDragId={setDragId} />}
         {view === 'week' && <TimeGridView days={weekDays(cursor)} itemsOn={itemsOn} onCreate={createAt} onOpen={openItem} />}
         {view === 'day' && <TimeGridView days={[cursor]} itemsOn={itemsOn} onCreate={createAt} onOpen={openItem} />}

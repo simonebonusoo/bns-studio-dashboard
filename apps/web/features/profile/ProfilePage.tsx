@@ -8,6 +8,7 @@ import { Field, Input, Select, Textarea } from '@/components/ui/Input';
 import { ROLE_LABELS } from '@/types/enums';
 import { useAuth } from '@/stores/auth';
 import { updateOwnProfile, uploadOwnAvatar } from '@/services/profileService';
+import { memberAvatarProps } from '@/lib/memberAvatar';
 import type { Member } from '@/types';
 import { toast } from 'sonner';
 
@@ -85,7 +86,7 @@ export default function ProfilePage() {
             onClick={() => fileRef.current?.click()}
             aria-label="Carica avatar"
           >
-            <Avatar name={shownName} color={member.avatarColor} src={member.avatarUrl} size="lg" className="h-16 w-16 text-xl" />
+            <Avatar {...memberAvatarProps(member)} name={shownName} size="lg" className="h-16 w-16 text-xl" />
             <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/35 text-white opacity-0 transition-opacity group-hover:opacity-100">
               <Camera className="h-5 w-5" />
             </span>

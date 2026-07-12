@@ -40,11 +40,13 @@ export interface Organization {
   id: string;
   name: string;
   slug: string;
+  email?: string | null;
   currency: string;
   locale: string;
   timezone: string;
-  vat?: string;
+  vat?: string | null;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Member extends BaseEntity {

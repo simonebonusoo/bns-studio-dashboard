@@ -20,6 +20,7 @@ import { StatusBadge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { formatCurrency, formatDate, formatRelative, daysUntil } from '@/lib/format';
 import { invoiceBalance } from '@/lib/finance';
+import { memberAvatarProps } from '@/lib/memberAvatar';
 import type { ActivityLog, Contract, Estimate, Invoice, Member, Payment, Project } from '@/types';
 
 export default function DashboardPage() {
@@ -205,11 +206,10 @@ export default function DashboardPage() {
           <ul className="max-h-72 divide-y divide-border overflow-y-auto overscroll-contain">
             {recentLogs.map((log) => (
               <li key={log.id} className="flex items-center gap-2.5 px-4 py-2.5">
-                <Avatar
-                  name={memberName(log.actorId)}
-                  size="xs"
-                  color={(members ?? []).find((item) => item.id === log.actorId)?.avatarColor}
-                />
+                {(() => {
+                  const actor = (members ?? []).find((item) => item.id === log.actorId);
+                  return actor ? <Avatar {...memberAvatarProps(actor)} size="xs" /> : <Avatar name={memberName(log.actorId)} size="xs" />;
+                })()}
                 <div className="min-w-0 flex-1">
                   <p className="flex min-w-0 items-baseline gap-1 text-sm">
                     <span className="min-w-0 truncate font-medium">{memberName(log.actorId)}</span>
