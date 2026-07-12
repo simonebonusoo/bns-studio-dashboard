@@ -68,7 +68,7 @@ export function SidebarNav({
                         'group relative flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-sm font-medium transition-colors',
                         collapsed && 'justify-center px-0',
                         isActive
-                          ? 'bg-surface-2 text-fg'
+                          ? 'bg-surface-2 text-fg ring-1 ring-border'
                           : 'text-fg-subtle hover:bg-surface-2/70 hover:text-fg',
                       )
                     }
@@ -77,6 +77,9 @@ export function SidebarNav({
                       <>
                         {isActive && !collapsed && (
                           <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-accent" />
+                        )}
+                        {isActive && collapsed && (
+                          <span className="absolute left-1 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-accent" />
                         )}
                         <it.icon
                           className={cn(
@@ -134,7 +137,7 @@ export function Sidebar() {
   return (
     <aside
       style={{ width: collapsed ? 64 : width }}
-      className="relative sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-200 ease-smooth md:flex"
+      className="relative sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-surface/95 shadow-[18px_0_44px_-42px_rgba(15,15,16,0.9)] transition-[width] duration-200 ease-smooth md:flex"
     >
       <div className="flex h-12 items-center justify-end px-3 pt-2">
         <button
@@ -150,7 +153,7 @@ export function Sidebar() {
 
       {!collapsed && (
         <div className="px-3 pb-3">
-          <div className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2">
+          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-surface-2/80 px-3 py-2">
             <span
               className={cn(
                 'h-1.5 w-1.5 shrink-0 rounded-full',

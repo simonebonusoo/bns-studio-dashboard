@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Hash, Pause, Play, Send, Square } from 'lucide-react';
+import { Hash, Pause, Play, Send, Square, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
+import { ConfirmDialog } from '@/components/ui/Modal';
 import { EmptyState, LoadingState } from '@/components/ui/States';
-import { useCreate, useList } from '@/hooks/useEntities';
+import { useCreate, useList, useRemove } from '@/hooks/useEntities';
 import { useAuth } from '@/stores/auth';
 import { useTimer } from '@/features/time-tracking/timerStore';
 import { formatHours, formatRelative } from '@/lib/format';
@@ -47,11 +48,13 @@ export default function WorkloadPage() {
   const { data: comments, isLoading: commentsLoading } = useList<Comment>('comments');
   const { data: entries, isLoading: entriesLoading } = useList<TimeEntry>('timeEntries');
   const createComment = useCreate<Comment>('comments');
+  const removeComment = useRemove('comments');
   const createEntry = useCreate<TimeEntry>('timeEntries');
   const member = useAuth((state) => state.member);
   const timer = useTimer();
   const [params, setParams] = useSearchParams();
   const [draft, setDraft] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<Comment | null>(null);
   const [, forceTick] = useState(0);
 
   useEffect(() => {
@@ -105,6 +108,13 @@ export default function WorkloadPage() {
     });
     setDraft('');
     toast.success('Aggiornamento pubblicato');
+  };
+
+  const deleteComment = async () => {
+    if (!deleteTarget) return;
+    await removeComment.mutateAsync(deleteTarget.id);
+    setDeleteTarget(null);
+    toast.success('Messaggio eliminato');
   };
 
   const startTimer = () => {
@@ -216,18 +226,28 @@ export default function WorkloadPage() {
                     const author = comment.authorId ? commentAuthors.get(comment.authorId) : undefined;
                     return (
                       <div key={comment.id} className="rounded-xl border border-border bg-surface px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <Avatar
-                            name={author ? `${author.firstName} ${author.lastName}` : 'Sistema'}
-                            color={author?.avatarColor}
-                            size="sm"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium">
-                              {author ? `${author.firstName} ${author.lastName}` : 'Sistema'}
-                            </p>
-                            <p className="text-xs text-fg-subtle">{formatRelative(comment.createdAt)}</p>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <Avatar
+                              name={author ? `${author.firstName} ${author.lastName}` : 'Sistema'}
+                              color={author?.avatarColor}
+                              size="sm"
+                            />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium">
+                                {author ? `${author.firstName} ${author.lastName}` : 'Sistema'}
+                              </p>
+                              <p className="text-xs text-fg-subtle">{formatRelative(comment.createdAt)}</p>
+                            </div>
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeleteTarget(comment)}
+                            aria-label="Elimina messaggio"
+                          >
+                            <Trash2 className="h-4 w-4 text-danger" />
+                          </Button>
                         </div>
                         <p className="mt-3 whitespace-pre-wrap text-sm text-fg-subtle">{comment.content}</p>
                       </div>
@@ -345,6 +365,16 @@ export default function WorkloadPage() {
           </Card>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={deleteComment}
+        title="Elimina messaggio"
+        message="Eliminare questo aggiornamento dal canale progetto?"
+        confirmLabel="Elimina"
+        danger
+      />
     </div>
   );
 }

@@ -3,7 +3,6 @@ import {
   Users,
   Briefcase,
   Calendar,
-  Clock,
   UsersRound,
   FileText,
   FileSignature,
@@ -47,7 +46,6 @@ export const NAV: NavGroup[] = [
     items: [
       { label: 'Progetti', to: '/projects', icon: Briefcase, permission: 'projects.read' },
       { label: 'Calendario', to: '/calendar', icon: Calendar },
-      { label: 'Time Tracking', to: '/time', icon: Clock, permission: 'time.log' },
     ],
   },
   {
@@ -73,7 +71,7 @@ export const NAV: NavGroup[] = [
   {
     label: 'Risorse',
     items: [
-      { label: 'File', to: '/files', icon: FolderOpen, permission: 'files.read' },
+      { label: 'Archivio', to: '/files', icon: FolderOpen, permission: 'files.read' },
       { label: 'Importa Markdown', to: '/import', icon: FileUp, permission: 'imports.manage' },
       { label: 'Servizi', to: '/services', icon: Package },
     ],

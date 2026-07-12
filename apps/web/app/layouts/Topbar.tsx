@@ -24,7 +24,7 @@ export function Topbar() {
   const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-bg/80 px-3 backdrop-blur-md sm:px-4">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-surface/82 px-3 shadow-[0_18px_44px_-42px_rgba(15,15,16,0.95)] backdrop-blur-md sm:px-4">
       <button
         onClick={() => setMobileNavOpen(true)}
         className="press rounded-lg p-2 text-fg-subtle hover:bg-surface-2 md:hidden"
@@ -39,11 +39,11 @@ export function Topbar() {
 
       <button
         onClick={() => setCommandOpen(true)}
-        className="press flex h-8 items-center gap-2 rounded-lg border border-border bg-surface px-2.5 text-sm text-fg-subtle transition-colors hover:border-border-strong hover:text-fg md:w-64"
+        className="press flex h-8 w-10 items-center justify-center gap-2 rounded-lg border border-border bg-bg/70 px-2.5 text-sm text-fg-subtle transition-colors hover:border-border-strong hover:text-fg sm:w-56 sm:justify-start md:w-72"
         aria-label="Cerca (comando K)"
       >
         <Search className="h-4 w-4 shrink-0" />
-        <span className="hidden md:inline">Cerca o vai a…</span>
+        <span className="hidden truncate sm:inline">Cerca o vai a…</span>
         <kbd className="ml-auto hidden items-center gap-0.5 rounded border border-border bg-surface-2 px-1.5 font-mono text-2xs text-fg-faint md:inline-flex">
           {isMac ? '⌘' : 'Ctrl'} K
         </kbd>
@@ -78,7 +78,10 @@ export function Topbar() {
 
         <div className="flex items-center gap-1">
           {member && (
-            <Avatar name={`${member.firstName} ${member.lastName}`} color={member.avatarColor} size="sm" />
+            <div className="hidden items-center gap-2 rounded-lg bg-bg/55 px-1.5 py-1 sm:flex">
+              <Avatar name={`${member.firstName} ${member.lastName}`} color={member.avatarColor} size="sm" />
+              <span className="max-w-28 truncate pr-1 text-xs font-medium text-fg-subtle">{member.firstName}</span>
+            </div>
           )}
           <button
             onClick={logout}

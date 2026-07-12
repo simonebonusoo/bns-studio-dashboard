@@ -6,19 +6,20 @@ import { Input, Select } from '@/components/ui/Input';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { useDetail, useList, useUpdate } from '@/hooks/useEntities';
 import { useRemoveFile, useFileUrl } from '@/hooks/useFiles';
-import { useFolders } from './foldersStore';
 import { DOCUMENT_CATEGORIES, SOURCE_TYPES } from './documentCategories';
 import { formatDate } from '@/lib/format';
 import type { FileItem, Project, Client } from '@/types';
 import { toast } from 'sonner';
 
-const fmtSize = (b: number) => (b > 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.round(b / 1000)} KB`);
+const fmtSize = (bytes?: number | null) => {
+  const safeBytes = bytes ?? 0;
+  return safeBytes > 1e6 ? `${(safeBytes / 1e6).toFixed(1)} MB` : `${Math.round(safeBytes / 1000)} KB`;
+};
 
 export function FileDetailDrawer({ fileId, onClose }: { fileId: string | null; onClose: () => void }) {
   const { data: file } = useDetail<FileItem>('files', fileId ?? undefined);
   const { data: projects } = useList<Project>('projects');
   const { data: clients } = useList<Client>('clients');
-  const folders = useFolders((s) => s.folders);
   const update = useUpdate<FileItem>('files');
   const remove = useRemoveFile();
   const resolvedUrl = useFileUrl(file ?? undefined);
@@ -26,8 +27,10 @@ export function FileDetailDrawer({ fileId, onClose }: { fileId: string | null; o
 
   if (!file) return null;
   const patch = (p: Partial<FileItem>) => update.mutate({ id: file.id, patch: p });
-  const isImage = file.mime.startsWith('image') && !!resolvedUrl;
-  const isPdf = file.mime.includes('pdf') && !!resolvedUrl;
+  const mime = file.mime ?? '';
+  const tags = file.tags ?? [];
+  const isImage = mime.startsWith('image') && !!resolvedUrl;
+  const isPdf = mime.includes('pdf') && !!resolvedUrl;
 
   const del = async () => { await remove.mutateAsync(file); toast.success('File eliminato'); onClose(); };
 
@@ -63,12 +66,6 @@ export function FileDetailDrawer({ fileId, onClose }: { fileId: string | null; o
             )}
           </div>
 
-          <F label="Cartella">
-            <Select value={file.folder ?? ''} onChange={(e) => patch({ folder: e.target.value || undefined })}>
-              <option value="">—</option>
-              {folders.map((f) => <option key={f} value={f}>{f}</option>)}
-            </Select>
-          </F>
           <F label="Categoria documento">
             <Select value={file.documentCategory ?? 'Altro'} onChange={(e) => patch({ documentCategory: e.target.value as FileItem['documentCategory'] })}>
               {DOCUMENT_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
@@ -80,7 +77,7 @@ export function FileDetailDrawer({ fileId, onClose }: { fileId: string | null; o
             </Select>
           </F>
           <F label="Tag (separati da virgola)">
-            <Input defaultValue={file.tags.join(', ')} onBlur={(e) => patch({ tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })} />
+            <Input defaultValue={tags.join(', ')} onBlur={(e) => patch({ tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })} />
           </F>
           <F label="Collega a progetto">
             <Select value={file.projectId ?? ''} onChange={(e) => patch({ projectId: e.target.value || null })}>

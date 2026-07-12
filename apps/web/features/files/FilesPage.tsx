@@ -4,7 +4,6 @@ import {
   File,
   FileArchive,
   FileText,
-  FolderPlus,
   Grid2x2,
   Image,
   List,
@@ -22,7 +21,6 @@ import { LoadingState, EmptyState } from '@/components/ui/States';
 import { DataTable, type Column } from '@/components/tables/DataTable';
 import { useList } from '@/hooks/useEntities';
 import { useUploadFile, useRemoveFile } from '@/hooks/useFiles';
-import { useFolders } from './foldersStore';
 import { DOCUMENT_CATEGORIES } from './documentCategories';
 import { FileDetailDrawer } from './FileDetailDrawer';
 import { useUI } from '@/stores/ui';
@@ -30,14 +28,20 @@ import { cn } from '@/lib/cn';
 import { formatDate } from '@/lib/format';
 import type { Client, FileItem, Project } from '@/types';
 
-function iconFor(mime: string) {
-  if (mime.startsWith('image')) return <Image className="h-5 w-5 text-info" />;
-  if (mime.includes('pdf')) return <FileText className="h-5 w-5 text-danger" />;
-  if (mime.includes('zip')) return <FileArchive className="h-5 w-5 text-warning" />;
+function iconFor(mime?: string | null) {
+  const type = mime ?? '';
+  if (type.startsWith('image')) return <Image className="h-5 w-5 text-info" />;
+  if (type.includes('pdf')) return <FileText className="h-5 w-5 text-danger" />;
+  if (type.includes('zip')) return <FileArchive className="h-5 w-5 text-warning" />;
   return <File className="h-5 w-5 text-fg-subtle" />;
 }
 
-const formatSize = (bytes: number) => (bytes > 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.round(bytes / 1000)} KB`);
+const formatSize = (bytes?: number | null) => {
+  const safeBytes = bytes ?? 0;
+  return safeBytes > 1e6 ? `${(safeBytes / 1e6).toFixed(1)} MB` : `${Math.round(safeBytes / 1000)} KB`;
+};
+
+const categoryOf = (file: FileItem) => file.documentCategory ?? 'Altro';
 
 export default function FilesPage() {
   const { data: files, isLoading } = useList<FileItem>('files');
@@ -45,12 +49,10 @@ export default function FilesPage() {
   const { data: clients } = useList<Client>('clients');
   const upload = useUploadFile();
   const remove = useRemoveFile();
-  const { folders, add: addFolder, remove: removeFolder } = useFolders();
   const filesView = useUI((state) => state.filesView);
   const setFilesView = useUI((state) => state.setFilesView);
   const [params, setParams] = useSearchParams();
   const projectFilter = params.get('projectId');
-  const [folder, setFolder] = useState('all');
   const [category, setCategory] = useState('all');
   const [openId, setOpenId] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -71,13 +73,18 @@ export default function FilesPage() {
   const filtered = useMemo(
     () =>
       (files ?? []).filter((file) => {
-        const matchesFolder = folder === 'all' || file.folder === folder;
         const matchesProject = !projectFilter || file.projectId === projectFilter;
-        const matchesCategory = category === 'all' || (file.documentCategory ?? 'Altro') === category;
-        return matchesFolder && matchesProject && matchesCategory;
+        const matchesCategory = category === 'all' || categoryOf(file) === category;
+        return matchesProject && matchesCategory;
       }),
-    [category, files, folder, projectFilter],
+    [category, files, projectFilter],
   );
+
+  const fileCount = files?.length ?? 0;
+  const activeProjectName = projectFilter ? projectName(projectFilter) : null;
+  const description = activeProjectName
+    ? `${filtered.length} file collegati a ${activeProjectName}`
+    : `${fileCount} file in archivio`;
 
   const clearProjectFilter = () => {
     const next = new URLSearchParams(params);
@@ -92,7 +99,6 @@ export default function FilesPage() {
       try {
         await upload.mutateAsync({
           file,
-          folder: folder === 'all' ? undefined : folder,
           projectId: projectFilter,
           documentCategory: category === 'all' ? undefined : category as FileItem['documentCategory'],
           clientVisible: false,
@@ -100,20 +106,13 @@ export default function FilesPage() {
         });
         uploaded += 1;
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : `Errore nel caricamento di ${file.name}`);
+        console.error('[BnsStudio] Upload file fallito', error);
+        const message = error instanceof Error ? error.message : 'Errore sconosciuto';
+        toast.error(`Caricamento non riuscito per "${file.name}": ${message}`);
       }
     }
     if (uploaded) toast.success(`${uploaded} file caricati`);
     if (fileInput.current) fileInput.current.value = '';
-  };
-
-  const newFolder = () => {
-    const name = window.prompt('Nome della nuova cartella');
-    if (name?.trim()) {
-      addFolder(name.trim());
-      setFolder(name.trim());
-      toast.success('Cartella creata');
-    }
   };
 
   const fileMenu = (file: FileItem): MenuItem[] => [
@@ -148,8 +147,8 @@ export default function FilesPage() {
     {
       key: 'type',
       header: 'Categoria',
-      sortValue: (file) => file.documentCategory ?? 'Altro',
-      render: (file) => <Badge tone="neutral">{file.documentCategory ?? 'Altro'}</Badge>,
+      sortValue: (file) => categoryOf(file),
+      render: (file) => <Badge tone="neutral">{categoryOf(file)}</Badge>,
     },
     {
       key: 'project',
@@ -165,7 +164,7 @@ export default function FilesPage() {
     {
       key: 'size',
       header: 'Dimensione',
-      sortValue: (file) => file.size,
+      sortValue: (file) => file.size ?? 0,
       render: (file) => <span>{formatSize(file.size)}</span>,
     },
     {
@@ -204,8 +203,8 @@ export default function FilesPage() {
     <div className="space-y-5">
       <input ref={fileInput} type="file" multiple className="hidden" onChange={onUpload} />
       <PageHeader
-        title="File"
-        description={`${(files ?? []).length} file · demo: salvati come data-URI in IndexedDB (Supabase Storage in produzione)`}
+        title="Archivio"
+        description={description}
         actions={
           <>
             <div className="flex items-center rounded-lg border border-border bg-surface p-0.5">
@@ -222,39 +221,19 @@ export default function FilesPage() {
                 <Grid2x2 className="h-4 w-4" /> Grid
               </button>
             </div>
-            <Button variant="secondary" onClick={newFolder}><FolderPlus className="h-4 w-4" /> Cartella</Button>
             <Button onClick={() => fileInput.current?.click()}><Upload className="h-4 w-4" /> Carica</Button>
           </>
         }
       />
 
       <div className="flex flex-wrap gap-1.5">
-        <FolderChip active={folder === 'all'} onClick={() => setFolder('all')} label={`Tutte (${(files ?? []).length})`} />
-        {folders.map((item) => {
-          const count = (files ?? []).filter((file) => file.folder === item).length;
-          return (
-            <FolderChip
-              key={item}
-              active={folder === item}
-              onClick={() => setFolder(item)}
-              label={`${item} (${count})`}
-              onDelete={count === 0 ? () => {
-                removeFolder(item);
-                if (folder === item) setFolder('all');
-              } : undefined}
-            />
-          );
-        })}
-      </div>
-
-      <div className="flex flex-wrap gap-1.5">
-        <FolderChip active={category === 'all'} onClick={() => setCategory('all')} label="Tutte le categorie" />
+        <FilterChip active={category === 'all'} onClick={() => setCategory('all')} label={`Tutte (${fileCount})`} />
         {DOCUMENT_CATEGORIES.map((item) => (
-          <FolderChip
+          <FilterChip
             key={item}
             active={category === item}
             onClick={() => setCategory(item)}
-            label={`${item} (${(files ?? []).filter((file) => (file.documentCategory ?? 'Altro') === item).length})`}
+            label={`${item} (${(files ?? []).filter((file) => categoryOf(file) === item).length})`}
           />
         ))}
       </div>
@@ -272,7 +251,7 @@ export default function FilesPage() {
         <EmptyState
           icon={<Upload className="h-8 w-8" />}
           title="Nessun file"
-          description="Carica un file per iniziare."
+          description="Carica il primo documento in questo archivio."
           action={<Button onClick={() => fileInput.current?.click()}><Upload className="h-4 w-4" /> Carica</Button>}
         />
       ) : filesView === 'list' ? (
@@ -294,6 +273,7 @@ export default function FilesPage() {
                 <div className="space-y-1">
                   <p className="truncate text-sm font-medium">{file.name}</p>
                   <p className="text-xs text-fg-subtle">{file.mime || 'File generico'}</p>
+                  <Badge tone="neutral">{categoryOf(file)}</Badge>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs text-fg-subtle">
                   <div>
@@ -320,11 +300,10 @@ export default function FilesPage() {
   );
 }
 
-function FolderChip({ active, onClick, label, onDelete }: { active: boolean; onClick: () => void; label: string; onDelete?: () => void }) {
+function FilterChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
     <span className={cn('inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-sm transition-colors', active ? 'border-accent/40 bg-accent/10 text-fg' : 'border-border text-fg-subtle hover:bg-surface-2')}>
       <button onClick={onClick}>{label}</button>
-      {onDelete && <button onClick={onDelete} aria-label="Elimina cartella"><X className="h-3 w-3 text-fg-faint hover:text-danger" /></button>}
     </span>
   );
 }
