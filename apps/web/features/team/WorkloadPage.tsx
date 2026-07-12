@@ -180,7 +180,7 @@ export default function WorkloadPage() {
   if (isLoading) return <LoadingState />;
 
   return (
-    <div className="space-y-5">
+    <div className="flex min-h-full flex-col gap-5">
       <PageHeader
         title="Hub"
         description="Canali progetto, aggiornamenti interni e timer contestualizzato nello stesso spazio."
@@ -193,13 +193,13 @@ export default function WorkloadPage() {
         }
       />
 
-      <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
-        <Card className="overflow-hidden">
-          <div className="border-b border-border px-4 py-3">
+      <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
+        <Card className="flex min-h-0 flex-col overflow-hidden">
+          <div className="shrink-0 border-b border-border px-4 py-3">
             <p className="text-sm font-semibold">Canali progetto</p>
             <p className="text-xs text-fg-subtle">Ogni progetto diventa il suo contesto interno operativo.</p>
           </div>
-          <div className="divide-y divide-border">
+          <div className="min-h-0 flex-1 divide-y divide-border overflow-y-auto overscroll-contain">
             {activeProjects.map((project) => {
               const count = (comments ?? []).filter(
                 (comment) => comment.entityType === 'project' && comment.entityId === project.id,
@@ -227,9 +227,9 @@ export default function WorkloadPage() {
           </div>
         </Card>
 
-        <div className="space-y-4">
-          <Card>
-            <div className="flex items-start justify-between border-b border-border px-4 py-3">
+        <div className="min-h-0">
+          <Card className="flex h-full min-h-[560px] flex-col overflow-hidden xl:min-h-0">
+            <div className="flex shrink-0 items-start justify-between border-b border-border px-4 py-3">
               <div>
                 <p className="text-sm font-semibold">
                   {selectedProject ? `#${selectedProject.code.toLowerCase()}` : 'Seleziona un progetto'}
@@ -248,8 +248,8 @@ export default function WorkloadPage() {
             {!selectedProject ? (
               <EmptyState title="Nessun canale selezionato" description="Scegli un progetto dalla colonna sinistra per entrare nel suo contesto interno." />
             ) : (
-              <div className="space-y-4 p-4">
-                <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+              <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
+                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1">
                   {projectComments.map((comment) => {
                     const author = comment.authorId ? commentAuthors.get(comment.authorId) : undefined;
                     const canEdit = canManageComment(comment);
@@ -341,7 +341,7 @@ export default function WorkloadPage() {
                   )}
                 </div>
 
-                <div className="space-y-3 border-t border-border pt-4">
+                <div className="shrink-0 space-y-3 border-t border-border pt-4">
                   <textarea
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
@@ -362,7 +362,7 @@ export default function WorkloadPage() {
           </Card>
         </div>
 
-        <div className="space-y-4">
+        <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1">
           <Card className="p-4">
             <p className="text-sm font-semibold">Timer integrato</p>
             <p className="mt-1 text-sm text-fg-subtle">
@@ -405,7 +405,7 @@ export default function WorkloadPage() {
               <p className="text-sm font-semibold">Carico team</p>
               <p className="text-xs text-fg-subtle">La percentuale numerica non viene più bloccata a 100%.</p>
             </div>
-            <div className="divide-y divide-border">
+            <div className="max-h-80 divide-y divide-border overflow-y-auto overscroll-contain">
               {workloadRows.map(({ member: teamMember, metrics }) => {
                 const width = Math.min(Math.max(metrics.utilization, 0), 140);
                 return (

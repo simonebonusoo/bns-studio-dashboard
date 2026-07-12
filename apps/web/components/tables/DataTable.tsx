@@ -56,9 +56,9 @@ export function DataTable<T extends { id: string }>({
   if (data.length === 0 && empty) return <>{empty}</>;
 
   return (
-    <div className="overflow-x-auto rounded-card border border-border bg-surface">
-      <table className="w-full text-sm">
-        <thead>
+    <div className="max-h-[min(640px,calc(100dvh-260px))] overflow-auto overscroll-contain rounded-card border border-border bg-surface">
+      <table className="min-w-full text-sm">
+        <thead className="sticky top-0 z-10 bg-surface">
           <tr className="border-b border-border text-left text-2xs uppercase tracking-wide text-fg-faint">
             {columns.map((c) => {
               const activeSort = sort?.key === c.key;

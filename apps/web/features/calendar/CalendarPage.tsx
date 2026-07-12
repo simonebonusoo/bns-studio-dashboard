@@ -132,7 +132,7 @@ export default function CalendarPage() {
   if (isLoading) return <LoadingState />;
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-full flex-col gap-4">
       <PageHeader
         title="Calendario"
         description="Eventi e milestone operative"
@@ -155,12 +155,14 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {view === 'month' && <MonthView cursor={cursor} itemsOn={itemsOn} onCreate={createAt} onOpen={openItem} onDropDay={dropOnDay} setDragId={setDragId} />}
-      {view === 'week' && <TimeGridView days={weekDays(cursor)} itemsOn={itemsOn} onCreate={createAt} onOpen={openItem} />}
-      {view === 'day' && <TimeGridView days={[cursor]} itemsOn={itemsOn} onCreate={createAt} onOpen={openItem} />}
-      {view === 'agenda' && <AgendaView items={items} onOpen={openItem} />}
+      <div className="min-h-0 flex-1">
+        {view === 'month' && <MonthView cursor={cursor} itemsOn={itemsOn} onCreate={createAt} onOpen={openItem} onDropDay={dropOnDay} setDragId={setDragId} />}
+        {view === 'week' && <TimeGridView days={weekDays(cursor)} itemsOn={itemsOn} onCreate={createAt} onOpen={openItem} />}
+        {view === 'day' && <TimeGridView days={[cursor]} itemsOn={itemsOn} onCreate={createAt} onOpen={openItem} />}
+        {view === 'agenda' && <AgendaView items={items} onOpen={openItem} />}
+      </div>
 
-      <div className="flex flex-wrap gap-4 text-xs text-fg-subtle">
+      <div className="shrink-0 flex flex-wrap gap-4 text-xs text-fg-subtle">
         <Legend color="#9b5de5" label="Evento" icon={<Clock className="h-3 w-3" />} />
         <Legend color="#b0d62e" label="Milestone" icon={<Flag className="h-3 w-3" />} />
       </div>
@@ -196,11 +198,11 @@ function MonthView({ cursor, itemsOn, onCreate, onOpen, onDropDay, setDragId }: 
   for (let d = start; d <= end; d = addDays(d, 1)) days.push(d);
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="flex h-full min-h-[520px] flex-col overflow-hidden md:min-h-0">
       <div className="grid grid-cols-7 border-b border-border text-center text-2xs font-medium uppercase text-fg-faint">
         {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map((d) => <div key={d} className="py-2">{d}</div>)}
       </div>
-      <div className="grid grid-cols-7">
+      <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-7 overflow-hidden">
         {days.map((day) => {
           const dayItems = itemsOn(day);
           const inMonth = isSameMonth(day, cursor);
@@ -211,7 +213,7 @@ function MonthView({ cursor, itemsOn, onCreate, onOpen, onDropDay, setDragId }: 
               onClick={() => onCreate(day)}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => onDropDay(day)}
-              className={cn('group min-h-28 cursor-pointer border-b border-r border-border p-1.5 transition-colors hover:bg-surface-2/50', !inMonth && 'bg-surface-2/30')}
+              className={cn('group min-h-0 cursor-pointer overflow-hidden border-b border-r border-border p-1.5 transition-colors hover:bg-surface-2/50', !inMonth && 'bg-surface-2/30')}
             >
               <div className="flex items-center justify-between">
                 <span className={cn('inline-flex h-6 w-6 items-center justify-center rounded-full text-xs', today && 'bg-accent font-semibold text-accent-fg', !inMonth && !today && 'text-fg-faint')}>
@@ -219,7 +221,7 @@ function MonthView({ cursor, itemsOn, onCreate, onOpen, onDropDay, setDragId }: 
                 </span>
                 <Plus className="h-3.5 w-3.5 text-fg-faint opacity-0 group-hover:opacity-100" />
               </div>
-              <div className="mt-1 space-y-1">
+              <div className="mt-1 max-h-[calc(100%-2rem)] space-y-1 overflow-y-auto overscroll-contain pr-0.5">
                 {dayItems.slice(0, 3).map((i) => (
                   <div
                     key={i.id}
@@ -249,7 +251,7 @@ function TimeGridView({ days, itemsOn, onCreate, onOpen }: {
 }) {
   const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 07–20
   return (
-    <Card className="overflow-hidden">
+    <Card className="flex h-full min-h-[520px] flex-col overflow-hidden md:min-h-0">
       <div className="grid border-b border-border" style={{ gridTemplateColumns: `56px repeat(${days.length}, 1fr)` }}>
         <div />
         {days.map((d) => {
@@ -257,7 +259,7 @@ function TimeGridView({ days, itemsOn, onCreate, onOpen }: {
           return <div key={d.toISOString()} className="border-l border-border py-2 text-center"><p className="text-2xs uppercase text-fg-faint">{format(d, 'EEE', { locale: it })}</p><p className={cn('text-sm font-semibold', today && 'text-accent')}>{format(d, 'd')}</p></div>;
         })}
       </div>
-      <div className="max-h-[560px] overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {hours.map((h) => (
           <div key={h} className="grid border-b border-border/60" style={{ gridTemplateColumns: `56px repeat(${days.length}, 1fr)` }}>
             <div className="py-3 pr-2 text-right text-2xs text-fg-faint">{String(h).padStart(2, '0')}:00</div>
@@ -287,9 +289,9 @@ function AgendaView({ items, onOpen }: { items: CalItem[]; onOpen: (i: CalItem) 
     (acc[key] ??= []).push(i);
     return acc;
   }, {});
-  if (upcoming.length === 0) return <Card className="py-12 text-center text-sm text-fg-subtle">Nessun evento in programma</Card>;
+  if (upcoming.length === 0) return <Card className="flex h-full items-center justify-center py-12 text-center text-sm text-fg-subtle">Nessun evento in programma</Card>;
   return (
-    <div className="space-y-4">
+    <div className="max-h-full space-y-4 overflow-y-auto overscroll-contain pr-1">
       {Object.entries(groups).map(([day, dayItems]) => (
         <div key={day}>
           <p className="mb-1.5 text-xs font-semibold uppercase capitalize text-fg-faint">{day}</p>

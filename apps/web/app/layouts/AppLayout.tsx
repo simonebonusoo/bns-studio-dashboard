@@ -13,7 +13,7 @@ export function AppLayout() {
   useKeyboardShortcuts();
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg">
+    <div className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-bg">
       <a href="#main" className="skip-link">
         Vai al contenuto
       </a>
@@ -25,16 +25,16 @@ export function AppLayout() {
           BnsStudio
         </div>
       )}
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <Sidebar />
         <MobileNav />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Topbar />
-          <main id="main" className="flex-1">
-            <div className="mx-auto w-full max-w-[1360px] px-4 py-6 sm:px-6 lg:px-8">
+          <main id="main" className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
+            <div className="mx-auto min-h-full w-full max-w-[1360px] px-4 py-6 sm:px-6 lg:px-8">
               <Suspense fallback={<LoadingState />}>
                 {/* key sul path per una transizione d'ingresso coerente tra pagine */}
-                <div key={pathname} className="page-enter">
+                <div key={pathname} className="min-h-full page-enter">
                   <Outlet />
                 </div>
               </Suspense>

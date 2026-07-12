@@ -129,9 +129,9 @@ export function Topbar() {
             <div
               role="dialog"
               aria-label="Notifiche"
-              className="absolute right-0 top-full z-50 mt-2 w-[min(380px,calc(100vw-24px))] overflow-hidden rounded-xl border border-border bg-surface shadow-pop"
+              className="absolute right-0 top-full z-50 mt-2 flex max-h-[calc(100dvh-4rem)] w-[min(380px,calc(100vw-24px))] flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-pop"
             >
-              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
                 <p className="text-base font-semibold tracking-[-0.02em] text-fg">Notifiche</p>
                 <button
                   className="text-sm font-medium text-info hover:underline"
@@ -143,7 +143,7 @@ export function Topbar() {
                   Vedi tutte
                 </button>
               </div>
-              <div className="max-h-[420px] overflow-y-auto">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 {recentNotifications.length === 0 ? (
                   <div className="px-4 py-8 text-center text-sm text-fg-subtle">Nessuna notifica</div>
                 ) : (

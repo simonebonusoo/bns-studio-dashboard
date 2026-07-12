@@ -159,9 +159,9 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader title="Progetti attivi" action={<Link to="/projects" className="text-sm text-info hover:underline">Tutti</Link>} />
-          <ul className="divide-y divide-border">
+          <ul className="max-h-72 divide-y divide-border overflow-y-auto overscroll-contain">
             {activeProjects.map((project) => (
               <li key={project.id}>
                 <Link to={`/projects/${project.id}`} className="flex items-center justify-between px-4 py-2.5 hover:bg-surface-2">
@@ -177,9 +177,9 @@ export default function DashboardPage() {
           </ul>
         </Card>
 
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader title="Prossime scadenze" />
-          <ul className="divide-y divide-border">
+          <ul className="max-h-72 divide-y divide-border overflow-y-auto overscroll-contain">
             {upcomingDeadlines.map((item) => {
               const days = daysUntil(item.date);
               return (
@@ -200,9 +200,9 @@ export default function DashboardPage() {
           </ul>
         </Card>
 
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader title="Attività recenti" />
-          <ul className="divide-y divide-border">
+          <ul className="max-h-72 divide-y divide-border overflow-y-auto overscroll-contain">
             {recentLogs.map((log) => (
               <li key={log.id} className="flex items-center gap-2.5 px-4 py-2.5">
                 <Avatar
@@ -211,9 +211,9 @@ export default function DashboardPage() {
                   color={(members ?? []).find((item) => item.id === log.actorId)?.avatarColor}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm">
-                    <span className="font-medium">{memberName(log.actorId)}</span>{' '}
-                    <span className="text-fg-subtle">{actionLabel(log.action)} {entityLabel(log.entityType)}</span>
+                  <p className="flex min-w-0 items-baseline gap-1 text-sm">
+                    <span className="min-w-0 truncate font-medium">{memberName(log.actorId)}</span>
+                    <span className="min-w-0 truncate text-fg-subtle">{actionLabel(log.action)} {entityLabel(log.entityType)}</span>
                   </p>
                   <p className="text-xs text-fg-faint">{formatRelative(log.createdAt)}</p>
                 </div>
@@ -225,9 +225,9 @@ export default function DashboardPage() {
       </div>
 
       {dueInvoices.length > 0 && (
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader title="Pagamenti da ricevere" action={<Link to="/invoices" className="text-sm text-info hover:underline">Fatture</Link>} />
-          <ul className="divide-y divide-border">
+          <ul className="max-h-80 divide-y divide-border overflow-y-auto overscroll-contain">
             {dueInvoices.map(({ invoice, balance }) => {
               const days = daysUntil(invoice.dueDate);
               return (

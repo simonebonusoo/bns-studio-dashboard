@@ -21,7 +21,7 @@ export function SidebarNav({
   const can = useAuth((s) => s.can);
 
   return (
-    <nav className="flex-1 overflow-y-auto px-2 py-1">
+    <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-1">
       {NAV.map((group, gi) => {
         const items = group.items.filter((it) => !it.permission || can(it.permission));
         if (items.length === 0) return null;
@@ -75,7 +75,7 @@ export function SidebarNav({
 
 function BrandHeader({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   return (
-    <div className={cn('flex h-14 items-center px-3', collapsed ? 'justify-center' : 'justify-between gap-2')}>
+    <div className={cn('flex h-14 shrink-0 items-center px-3', collapsed ? 'justify-center' : 'justify-between gap-2')}>
       <div className={cn('flex min-w-0 items-center', collapsed ? 'justify-center' : 'gap-2.5')}>
         <BrandIcon className={cn('shrink-0', collapsed ? 'h-8 w-8' : 'h-8 w-8')} />
         {!collapsed && (
@@ -206,13 +206,13 @@ export function Sidebar() {
   return (
     <aside
       style={{ width: collapsed ? 64 : width }}
-      className="relative hidden min-h-0 shrink-0 flex-col self-stretch border-r border-border bg-surface transition-[width] duration-200 ease-smooth md:flex"
+      className="relative hidden min-h-0 shrink-0 flex-col self-stretch overflow-hidden border-r border-border bg-surface transition-[width] duration-200 ease-smooth md:flex"
     >
       <BrandHeader collapsed={collapsed} onToggle={toggle} />
 
       <SidebarNav collapsed={collapsed} />
 
-      <div className="mt-auto space-y-1 px-2 pb-2">
+      <div className="mt-auto shrink-0 space-y-1 px-2 pb-2">
         {collapsed && (
           <button
             onClick={toggle}

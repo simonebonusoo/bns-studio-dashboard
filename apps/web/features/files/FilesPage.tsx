@@ -200,7 +200,7 @@ export default function FilesPage() {
   if (isLoading) return <LoadingState />;
 
   return (
-    <div className="space-y-5">
+    <div className="flex min-h-full flex-col gap-5">
       <input ref={fileInput} type="file" multiple className="hidden" onChange={onUpload} />
       <PageHeader
         title="Archivio"
@@ -247,53 +247,57 @@ export default function FilesPage() {
         </div>
       )}
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={<Upload className="h-8 w-8" />}
-          title="Nessun file"
-          description="Carica il primo documento in questo archivio."
-          action={<Button onClick={() => fileInput.current?.click()}><Upload className="h-4 w-4" /> Carica</Button>}
-        />
-      ) : filesView === 'list' ? (
-        <DataTable
-          data={filtered}
-          columns={columns}
-          onRowClick={(file) => setOpenId(file.id)}
-          rowMenu={fileMenu}
-        />
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((file) => (
-            <ContextMenu key={file.id} items={fileMenu(file)}>
-              <Card onClick={() => setOpenId(file.id)} className="press flex cursor-pointer flex-col gap-4 p-4 transition-colors hover:border-border-strong">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-2">{iconFor(file.mime)}</div>
-                  <Badge tone={file.clientVisible ? 'info' : 'neutral'}>{file.clientVisible ? 'Cliente' : 'Interno'}</Badge>
-                </div>
-                <div className="space-y-1">
-                  <p className="truncate text-sm font-medium">{file.name}</p>
-                  <p className="text-xs text-fg-subtle">{file.mime || 'File generico'}</p>
-                  <Badge tone="neutral">{categoryOf(file)}</Badge>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs text-fg-subtle">
-                  <div>
-                    <p className="text-fg-faint">Dimensione</p>
-                    <p>{formatSize(file.size)}</p>
+      <div className="min-h-0 flex-1">
+        {filtered.length === 0 ? (
+          <div className="flex min-h-full items-center justify-center">
+            <EmptyState
+              icon={<Upload className="h-8 w-8" />}
+              title="Nessun file"
+              description="Carica il primo documento in questo archivio."
+              action={<Button onClick={() => fileInput.current?.click()}><Upload className="h-4 w-4" /> Carica</Button>}
+            />
+          </div>
+        ) : filesView === 'list' ? (
+          <DataTable
+            data={filtered}
+            columns={columns}
+            onRowClick={(file) => setOpenId(file.id)}
+            rowMenu={fileMenu}
+          />
+        ) : (
+          <div className="grid max-h-full content-start gap-3 overflow-y-auto overscroll-contain pr-1 sm:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((file) => (
+              <ContextMenu key={file.id} items={fileMenu(file)}>
+                <Card onClick={() => setOpenId(file.id)} className="press flex cursor-pointer flex-col gap-4 p-4 transition-colors hover:border-border-strong">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-2">{iconFor(file.mime)}</div>
+                    <Badge tone={file.clientVisible ? 'info' : 'neutral'}>{file.clientVisible ? 'Cliente' : 'Interno'}</Badge>
                   </div>
-                  <div>
-                    <p className="text-fg-faint">Data</p>
-                    <p>{formatDate(file.createdAt)}</p>
+                  <div className="space-y-1">
+                    <p className="truncate text-sm font-medium">{file.name}</p>
+                    <p className="text-xs text-fg-subtle">{file.mime || 'File generico'}</p>
+                    <Badge tone="neutral">{categoryOf(file)}</Badge>
                   </div>
-                  <div className="col-span-2">
-                    <p className="text-fg-faint">Progetto / cliente</p>
-                    <p className="truncate">{projectName(file.projectId)} · {clientName(file.clientId)}</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-fg-subtle">
+                    <div>
+                      <p className="text-fg-faint">Dimensione</p>
+                      <p>{formatSize(file.size)}</p>
+                    </div>
+                    <div>
+                      <p className="text-fg-faint">Data</p>
+                      <p>{formatDate(file.createdAt)}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-fg-faint">Progetto / cliente</p>
+                      <p className="truncate">{projectName(file.projectId)} · {clientName(file.clientId)}</p>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            </ContextMenu>
-          ))}
-        </div>
-      )}
+                </Card>
+              </ContextMenu>
+            ))}
+          </div>
+        )}
+      </div>
 
       <FileDetailDrawer fileId={openId} onClose={() => setOpenId(null)} />
     </div>
