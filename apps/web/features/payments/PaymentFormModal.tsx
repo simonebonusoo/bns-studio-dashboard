@@ -8,7 +8,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/hooks/useEntities';
 import { formatCurrency } from '@/lib/format';
 import { invoiceBalance, round2 } from '@/lib/finance';
-import { installmentSummary, markInstallmentPaid } from '@/services/installmentService';
+import { installmentSummary, markInstallmentPaid, syncPaymentStatusFromInstallments } from '@/services/installmentService';
+import { syncInstallmentCashflow, syncPaymentCashflow, voidInstallmentCashflow, voidPaymentCashflow } from '@/services/cashflowSync';
 import type { Payment, Client, Invoice, PaymentInstallment } from '@/types';
 import { toast } from 'sonner';
 
@@ -150,34 +151,47 @@ export function PaymentFormModal({
       toast.success(`Pagamento di ${formatCurrency(amount)} registrato`);
     }
     await saveInstallments(savedPayment);
+    if (mode === 'installments') await syncPaymentStatusFromInstallments(savedPayment.id);
+    await syncPaymentCashflow(savedPayment);
+    await qc.invalidateQueries({ queryKey: ['transactions'] });
+    await qc.invalidateQueries({ queryKey: ['notifications'] });
     onClose();
   };
 
   const saveInstallments = async (savedPayment: Payment) => {
     const existing = (allInstallments ?? []).filter((installment) => installment.paymentId === savedPayment.id);
     if (mode === 'single') {
-      await Promise.all(existing.map((installment) => hardDeleteInstallment.mutateAsync(installment.id)));
+      await Promise.all(existing.map(async (installment) => {
+        await voidInstallmentCashflow(installment.id);
+        await hardDeleteInstallment.mutateAsync(installment.id);
+      }));
       return;
     }
     const keptIds = new Set(installments.map((installment) => installment.id).filter(Boolean));
-    await Promise.all(existing.filter((installment) => !keptIds.has(installment.id)).map((installment) => hardDeleteInstallment.mutateAsync(installment.id)));
+    await Promise.all(existing.filter((installment) => !keptIds.has(installment.id)).map(async (installment) => {
+      await voidInstallmentCashflow(installment.id);
+      await hardDeleteInstallment.mutateAsync(installment.id);
+    }));
     for (const installment of installments) {
       const payload = {
         paymentId: savedPayment.id,
         installmentNumber: installment.installmentNumber,
         amount: Number(installment.amount),
         dueDate: installment.dueDate,
-        paidAt: installment.paidAt ?? null,
+        paidAt: installment.status === 'paid' ? (installment.paidAt ?? new Date().toISOString()) : null,
         status: installment.status,
         notes: installment.notes || null,
       };
-      if (installment.id) await updateInstallment.mutateAsync({ id: installment.id, patch: payload });
-      else await createInstallment.mutateAsync(payload);
+      const savedInstallment = installment.id
+        ? await updateInstallment.mutateAsync({ id: installment.id, patch: payload })
+        : await createInstallment.mutateAsync(payload);
+      await syncInstallmentCashflow(savedInstallment);
     }
   };
 
   const del = async () => {
     if (!payment) return;
+    await voidPaymentCashflow(payment.id);
     await Promise.all(paymentInstallments.map((installment) => hardDeleteInstallment.mutateAsync(installment.id)));
     await remove.mutateAsync(payment.id);
     await afterChange(null, payment.invoiceId);
@@ -202,6 +216,8 @@ export function PaymentFormModal({
     await markInstallmentPaid(persisted);
     await qc.invalidateQueries({ queryKey: ['paymentInstallments'] });
     await qc.invalidateQueries({ queryKey: ['payments'] });
+    await qc.invalidateQueries({ queryKey: ['transactions'] });
+    await qc.invalidateQueries({ queryKey: ['notifications'] });
     toast.success(`Rata ${installment.installmentNumber} pagata`);
   };
 
@@ -284,10 +300,24 @@ export function PaymentFormModal({
               </div>
               <div className="space-y-2">
                 {installments.map((installment, index) => (
-                  <div key={installment.id ?? index} className="grid grid-cols-[52px_1fr_1fr_auto] items-center gap-2 rounded-lg bg-surface-2 p-2">
+                  <div key={installment.id ?? index} className="grid grid-cols-[44px_1fr_1fr_118px_auto] items-center gap-2 rounded-lg bg-surface-2 p-2">
                     <span className="text-sm font-medium">#{installment.installmentNumber}</span>
                     <Input type="number" step="0.01" value={installment.amount} onChange={(e) => patchInstallment(index, { amount: e.target.value })} />
                     <Input type="date" value={installment.dueDate} onChange={(e) => patchInstallment(index, { dueDate: e.target.value })} />
+                    <Select
+                      value={installment.status}
+                      onChange={(event) => {
+                        const status = event.target.value as PaymentInstallment['status'];
+                        patchInstallment(index, {
+                          status,
+                          paidAt: status === 'paid' ? (installment.paidAt ?? new Date().toISOString()) : null,
+                        });
+                      }}
+                    >
+                      <option value="scheduled">Prevista</option>
+                      <option value="paid">Pagata</option>
+                      <option value="cancelled">Annullata</option>
+                    </Select>
                     <div className="flex gap-1">
                       {installment.id && installment.status !== 'paid' && (
                         <Button variant="secondary" size="sm" onClick={() => payInstallment(installment)}>Pagata</Button>

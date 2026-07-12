@@ -18,6 +18,7 @@ const LABELS: Record<string, string> = {
   invoices: 'Fatture',
   payments: 'Pagamenti',
   finance: 'Entrate e uscite',
+  profile: 'Profilo',
   analytics: 'Analytics',
   files: 'Archivio',
   services: 'Servizi',

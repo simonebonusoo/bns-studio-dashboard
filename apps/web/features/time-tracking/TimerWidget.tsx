@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { Play, Pause, Square } from 'lucide-react';
 import { useTimer } from './timerStore';
 import { useAuth } from '@/stores/auth';
-import { useCreate } from '@/hooks/useEntities';
+import { useCreate, useList } from '@/hooks/useEntities';
 import { todayISO } from '@/lib/id';
 import { cn } from '@/lib/cn';
 import { toast } from 'sonner';
-import type { TimeEntry } from '@/types';
+import type { Project, TimeEntry } from '@/types';
 
 function fmt(ms: number): string {
   const total = Math.floor(ms / 1000);
@@ -20,6 +20,7 @@ export function TimerWidget() {
   const timer = useTimer();
   const member = useAuth((s) => s.member);
   const createEntry = useCreate<TimeEntry>('timeEntries');
+  const { data: projects } = useList<Project>('projects');
   const [, tick] = useState(0);
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export function TimerWidget() {
   }, [timer.running]);
 
   const active = timer.running || timer.accumulated > 0;
+  const project = timer.projectId ? (projects ?? []).find((item) => item.id === timer.projectId) : null;
 
   const handleToggle = () => {
     if (!active) {
@@ -68,7 +70,7 @@ export function TimerWidget() {
   return (
     <div
       className={cn(
-        'hidden h-8 items-center gap-1 rounded-md px-1 text-fg-subtle sm:flex',
+        'hidden h-8 items-center gap-1 rounded-md px-1.5 text-fg-subtle sm:flex',
         active ? 'bg-accent/10 text-fg' : 'hover:bg-surface-2 hover:text-fg',
       )}
     >
@@ -78,6 +80,11 @@ export function TimerWidget() {
       <span className={cn('min-w-[58px] text-center font-mono text-xs tabular-nums', active ? 'text-fg' : 'text-fg-subtle')}>
         {fmt(active ? timer.elapsedMs() : 0)}
       </span>
+      {active && project && (
+        <span className="hidden max-w-28 truncate text-xs text-fg-faint lg:inline">
+          · {project.name}
+        </span>
+      )}
       {active && (
         <button onClick={handleStop} className="press rounded p-1 text-danger hover:bg-danger/10" aria-label="Ferma il timer e registra">
           <Square className="h-3 w-3" />

@@ -1,5 +1,6 @@
 import { round2 } from '@/lib/finance';
 import { nowISO } from '@/lib/id';
+import { syncInstallmentCashflow } from '@/services/cashflowSync';
 import { repositories } from '@/services/repository';
 import type { InstallmentStatus, Payment, PaymentInstallment } from '@/types';
 
@@ -65,5 +66,7 @@ export async function markInstallmentPaid(installment: PaymentInstallment) {
     paidAt: nowISO(),
     status: 'paid',
   });
+  const updated = await repositories.paymentInstallments.get(installment.id);
+  if (updated) await syncInstallmentCashflow(updated);
   await syncPaymentStatusFromInstallments(installment.paymentId);
 }

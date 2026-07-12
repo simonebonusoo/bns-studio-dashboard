@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { NAV } from '@/app/navigation';
 import { brandConfig } from '@/config/brandConfig';
@@ -8,8 +8,7 @@ import { useAuth } from '@/stores/auth';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/cn';
 import { ROLE_LABELS } from '@/types/enums';
-import { Copy, LogOut, MoreHorizontal, PanelLeft, PanelLeftClose, Settings } from 'lucide-react';
-import { toast } from 'sonner';
+import { LogOut, PanelLeft, PanelLeftClose, Settings } from 'lucide-react';
 
 /** Contenuto navigazione condiviso tra sidebar desktop e drawer mobile. */
 export function SidebarNav({
@@ -136,83 +135,36 @@ function SidebarUtilityRow({
 
 function ProfileRow({ collapsed }: { collapsed: boolean }) {
   const member = useAuth((s) => s.member);
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: MouseEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && setOpen(false);
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', close);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
+  const navigate = useNavigate();
 
   if (!member) return null;
 
-  const name = `${member.firstName} ${member.lastName}`;
+  const name = member.displayName || `${member.firstName} ${member.lastName}`;
   const secondary = member.jobTitle || ROLE_LABELS[member.role] || member.email;
-
-  const copyEmail = async () => {
-    await navigator.clipboard?.writeText(member.email);
-    setOpen(false);
-    toast.success('Email copiata');
-  };
 
   if (collapsed) {
     return (
-      <div ref={menuRef} className="relative">
-        <button
-          onClick={() => setOpen((value) => !value)}
-          className="press flex h-9 w-full items-center justify-center rounded-md hover:bg-surface-2/65"
-          title={name}
-        >
-          <Avatar name={name} color={member.avatarColor} size="xs" />
-        </button>
-        {open && (
-          <div className="absolute bottom-0 left-full z-40 ml-1 w-44 rounded-lg border border-border bg-surface p-1 shadow-pop">
-            <button
-              onClick={copyEmail}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-fg-subtle transition-colors hover:bg-surface-2 hover:text-fg"
-            >
-              <Copy className="h-4 w-4" /> Copia email
-            </button>
-          </div>
-        )}
-      </div>
+      <button
+        onClick={() => navigate('/profile')}
+        className="press flex h-9 w-full items-center justify-center rounded-md hover:bg-surface-2/65"
+        title={name}
+      >
+        <Avatar name={name} color={member.avatarColor} src={member.avatarUrl} size="xs" />
+      </button>
     );
   }
 
   return (
-    <div ref={menuRef} className="relative">
-      <button
-        onClick={() => setOpen((value) => !value)}
-        className="press flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors hover:bg-surface-2/65"
-      >
-        <Avatar name={name} color={member.avatarColor} size="sm" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-medium text-fg">{name}</span>
-          <span className="block truncate text-[11px] text-fg-faint">{secondary}</span>
-        </span>
-        <MoreHorizontal className="h-4 w-4 shrink-0 text-fg-faint" />
-      </button>
-
-      {open && (
-        <div className="absolute bottom-full left-0 z-40 mb-1 w-full rounded-lg border border-border bg-surface p-1 shadow-pop">
-          <button
-            onClick={copyEmail}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-fg-subtle transition-colors hover:bg-surface-2 hover:text-fg"
-          >
-            <Copy className="h-4 w-4" /> Copia email
-          </button>
-        </div>
-      )}
-    </div>
+    <button
+      onClick={() => navigate('/profile')}
+      className="press flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors hover:bg-surface-2/65"
+    >
+      <Avatar name={name} color={member.avatarColor} src={member.avatarUrl} size="sm" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-medium text-fg">{name}</span>
+        <span className="block truncate text-[11px] text-fg-faint">{secondary}</span>
+      </span>
+    </button>
   );
 }
 
@@ -254,7 +206,7 @@ export function Sidebar() {
   return (
     <aside
       style={{ width: collapsed ? 64 : width }}
-      className="relative sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-200 ease-smooth md:flex"
+      className="relative hidden min-h-0 shrink-0 flex-col self-stretch border-r border-border bg-surface transition-[width] duration-200 ease-smooth md:flex"
     >
       <BrandHeader collapsed={collapsed} onToggle={toggle} />
 

@@ -12,6 +12,7 @@ import { DocumentView } from '@/features/finance/DocumentView';
 import { invoiceBalance } from '@/lib/finance';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { getInvoiceDeleteSafety, hasBlockingDependencies } from '@/services/deleteSafety';
+import { syncPaymentCashflow, voidPaymentCashflow } from '@/services/cashflowSync';
 import { useAuth } from '@/stores/auth';
 import { InvoiceFormModal } from './InvoiceFormModal';
 import { downloadPdf, invoicePdfBlob, sharePdf } from '@/services/documentService';
@@ -46,7 +47,7 @@ export default function InvoiceDetailPage() {
   const recordPayment = async () => {
     const value = Number(amount);
     if (!value || value <= 0) { toast.error('Importo non valido'); return; }
-    await createPayment.mutateAsync({
+    const payment = await createPayment.mutateAsync({
       clientId: invoice.clientId,
       invoiceId: invoice.id,
       projectId: invoice.projectId,
@@ -57,6 +58,7 @@ export default function InvoiceDetailPage() {
       status: 'completed',
       reference: `MAN-${Date.now().toString().slice(-5)}`,
     });
+    await syncPaymentCashflow(payment);
     // aggiorna stato fattura in base al nuovo saldo
     const newBalance = invoiceBalance(invoice, [
       ...(payments ?? []),
@@ -73,6 +75,7 @@ export default function InvoiceDetailPage() {
 
   const deleteInvoice = async () => {
     if (blockedDelete) return;
+    await Promise.all(invPayments.map((payment) => voidPaymentCashflow(payment.id)));
     await remove.mutateAsync(invoice.id);
     toast.success('Fattura eliminata');
     navigate('/invoices');

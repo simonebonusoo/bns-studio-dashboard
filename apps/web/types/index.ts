@@ -51,6 +51,10 @@ export interface Member extends BaseEntity {
   firstName: string;
   lastName: string;
   email: string;
+  displayName?: string | null;
+  phone?: string | null;
+  bio?: string | null;
+  avatarUrl?: string | null;
   avatarColor: string;
   role: Role;
   jobTitle: string;
@@ -299,6 +303,10 @@ export interface Transaction extends BaseEntity {
   vendor?: string;
   method?: PaymentMethod;
   notes?: string;
+  sourceType?: 'manual' | 'payment' | 'payment_installment';
+  sourceId?: string | null;
+  sourceLabel?: string | null;
+  automatic?: boolean;
 }
 
 export interface Contract extends BaseEntity {

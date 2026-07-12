@@ -29,6 +29,7 @@ const ImportPage = lazy(() => import('@/features/import/ImportPage'));
 const ServicesPage = lazy(() => import('@/features/services/ServicesPage'));
 const SettingsPage = lazy(() => import('@/features/settings/SettingsPage'));
 const NotificationsPage = lazy(() => import('@/features/notifications/NotificationsPage'));
+const ProfilePage = lazy(() => import('@/features/profile/ProfilePage'));
 const NotFoundPage = lazy(() => import('@/features/misc/NotFoundPage'));
 
 export const router = createBrowserRouter([
@@ -67,6 +68,7 @@ export const router = createBrowserRouter([
       { path: 'services', element: <ServicesPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'notifications', element: <NotificationsPage /> },
+      { path: 'profile', element: <ProfilePage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

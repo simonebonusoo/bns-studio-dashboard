@@ -11,6 +11,7 @@ import { LoadingState, EmptyState } from '@/components/ui/States';
 import { useList, useRemove } from '@/hooks/useEntities';
 import { PaymentFormModal } from './PaymentFormModal';
 import { syncInvoiceStatus } from '@/services/paymentService';
+import { voidPaymentCashflow } from '@/services/cashflowSync';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/hooks/useEntities';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -52,9 +53,12 @@ export default function PaymentsPage() {
   const openEdit = (p: Payment) => { setEditing(p); setOpen(true); };
 
   const del = async (p: Payment) => {
+    await voidPaymentCashflow(p.id);
     await remove.mutateAsync(p.id);
     await syncInvoiceStatus(p.invoiceId);
     qc.invalidateQueries({ queryKey: ['invoices'] });
+    qc.invalidateQueries({ queryKey: ['transactions'] });
+    qc.invalidateQueries({ queryKey: ['notifications'] });
     qc.invalidateQueries({ queryKey: queryKeys.analytics });
     toast.success('Pagamento eliminato');
   };

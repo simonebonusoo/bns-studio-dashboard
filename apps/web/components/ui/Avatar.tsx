@@ -3,11 +3,13 @@ import { cn } from '@/lib/cn';
 export function Avatar({
   name,
   color,
+  src,
   size = 'md',
   className,
 }: {
   name: string;
   color?: string;
+  src?: string | null;
   size?: 'xs' | 'sm' | 'md' | 'lg';
   className?: string;
 }) {
@@ -19,6 +21,16 @@ export function Avatar({
     md: 'h-9 w-9 text-sm',
     lg: 'h-11 w-11 text-base',
   };
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        className={cn('shrink-0 rounded-full object-cover', sizes[size], className)}
+        title={name}
+      />
+    );
+  }
   return (
     <span
       className={cn(
