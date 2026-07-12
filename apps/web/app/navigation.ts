@@ -12,7 +12,6 @@ import {
   BarChart3,
   FolderOpen,
   FileUp,
-  Settings,
   Package,
   Gauge,
   type LucideIcon,
@@ -75,8 +74,5 @@ export const NAV: NavGroup[] = [
       { label: 'Importa Markdown', to: '/import', icon: FileUp, permission: 'imports.manage' },
       { label: 'Servizi', to: '/services', icon: Package },
     ],
-  },
-  {
-    items: [{ label: 'Impostazioni', to: '/settings', icon: Settings }],
   },
 ];

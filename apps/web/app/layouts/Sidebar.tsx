@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useRef } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { NAV } from '@/app/navigation';
 import { brandConfig } from '@/config/brandConfig';
 import { BrandIcon } from '@/components/branding/BrandIcon';
-import { IS_DEMO } from '@/config/env';
 import { useUI, SIDEBAR_MIN, SIDEBAR_MAX } from '@/stores/ui';
 import { useAuth } from '@/stores/auth';
+import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/cn';
-import { PanelLeftClose, PanelLeft } from 'lucide-react';
+import { ROLE_LABELS } from '@/types/enums';
+import { Copy, LogOut, MoreHorizontal, PanelLeft, PanelLeftClose, Settings } from 'lucide-react';
+import { toast } from 'sonner';
 
 /** Contenuto navigazione condiviso tra sidebar desktop e drawer mobile. */
 export function SidebarNav({
@@ -20,41 +22,12 @@ export function SidebarNav({
   const can = useAuth((s) => s.can);
 
   return (
-    <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-3 pt-2">
-      <div className="px-1">
-        {collapsed ? (
-          <div className="flex justify-center">
-            <div className="rounded-2xl border border-border bg-surface-2/80 p-2 shadow-[0_18px_32px_-28px_rgba(15,15,16,0.85)]">
-              <BrandIcon className="h-9 w-9" />
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-[22px] border border-border bg-surface-2/85 p-3.5 shadow-[0_22px_40px_-32px_rgba(15,15,16,0.9)]">
-            <div className="flex items-center gap-3">
-              <BrandIcon className="h-11 w-11 shadow-sm ring-1 ring-black/5 dark:ring-white/10" />
-              <div className="min-w-0">
-                <p className="truncate text-[1.05rem] font-semibold tracking-[-0.04em] text-fg">
-                  {brandConfig.productName}
-                </p>
-                <p className="mt-0.5 text-xs font-medium text-fg-faint">
-                  {brandConfig.version}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
+    <nav className="flex-1 overflow-y-auto px-2 py-1">
       {NAV.map((group, gi) => {
         const items = group.items.filter((it) => !it.permission || can(it.permission));
         if (items.length === 0) return null;
         return (
-          <div key={gi}>
-            {group.label && !collapsed && (
-              <p className="px-2.5 pb-1 text-2xs font-semibold uppercase tracking-[0.08em] text-fg-faint">
-                {group.label}
-              </p>
-            )}
+          <div key={gi} className={cn(gi > 0 && 'mt-2.5')}>
             <ul className="space-y-0.5">
               {items.map((it) => (
                 <li key={it.to}>
@@ -65,25 +38,25 @@ export function SidebarNav({
                     onClick={onNavigate}
                     className={({ isActive }) =>
                       cn(
-                        'group relative flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-sm font-medium transition-colors',
+                        'group relative flex h-8 items-center gap-2 rounded-md px-2 text-[13px] font-medium transition-colors',
                         collapsed && 'justify-center px-0',
                         isActive
-                          ? 'bg-surface-2 text-fg ring-1 ring-border'
-                          : 'text-fg-subtle hover:bg-surface-2/70 hover:text-fg',
+                          ? 'bg-accent/10 text-fg'
+                          : 'text-fg-subtle hover:bg-surface-2/65 hover:text-fg',
                       )
                     }
                   >
                     {({ isActive }) => (
                       <>
                         {isActive && !collapsed && (
-                          <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-accent" />
+                          <span className="absolute left-0 top-1/2 h-3.5 w-0.5 -translate-y-1/2 rounded-full bg-accent" />
                         )}
                         {isActive && collapsed && (
                           <span className="absolute left-1 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-accent" />
                         )}
                         <it.icon
                           className={cn(
-                            'h-[18px] w-[18px] shrink-0 transition-colors',
+                            'h-4 w-4 shrink-0 transition-colors',
                             isActive ? 'text-fg' : 'text-fg-faint group-hover:text-fg-subtle',
                           )}
                         />
@@ -101,12 +74,156 @@ export function SidebarNav({
   );
 }
 
+function BrandHeader({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  return (
+    <div className={cn('flex h-14 items-center px-3', collapsed ? 'justify-center' : 'justify-between gap-2')}>
+      <div className={cn('flex min-w-0 items-center', collapsed ? 'justify-center' : 'gap-2.5')}>
+        <BrandIcon className={cn('shrink-0', collapsed ? 'h-8 w-8' : 'h-8 w-8')} />
+        {!collapsed && (
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold tracking-[-0.03em] text-fg">{brandConfig.productName}</p>
+            <p className="mt-0.5 text-[11px] font-medium leading-none text-fg-faint">{brandConfig.version}</p>
+          </div>
+        )}
+      </div>
+      {!collapsed && (
+        <button
+          onClick={onToggle}
+          className="press rounded-md p-1.5 text-fg-faint hover:bg-surface-2 hover:text-fg-subtle"
+          aria-label="Comprimi sidebar"
+        >
+          <PanelLeftClose className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function SidebarUtilityRow({
+  icon: Icon,
+  label,
+  collapsed,
+  onClick,
+  to,
+}: {
+  icon: typeof Settings;
+  label: string;
+  collapsed: boolean;
+  onClick?: () => void;
+  to?: string;
+}) {
+  const className = cn(
+    'group flex h-8 w-full items-center gap-2 rounded-md px-2 text-[13px] font-medium text-fg-subtle transition-colors hover:bg-surface-2/65 hover:text-fg',
+    collapsed && 'justify-center px-0',
+  );
+
+  if (to) {
+    return (
+      <NavLink to={to} title={collapsed ? label : undefined} className={({ isActive }) => cn(className, isActive && 'bg-accent/10 text-fg')}>
+        <Icon className="h-4 w-4 shrink-0 text-fg-faint transition-colors group-hover:text-fg-subtle" />
+        {!collapsed && <span className="truncate">{label}</span>}
+      </NavLink>
+    );
+  }
+
+  return (
+    <button onClick={onClick} title={collapsed ? label : undefined} className={className}>
+      <Icon className="h-4 w-4 shrink-0 text-fg-faint transition-colors group-hover:text-fg-subtle" />
+      {!collapsed && <span className="truncate">{label}</span>}
+    </button>
+  );
+}
+
+function ProfileRow({ collapsed }: { collapsed: boolean }) {
+  const member = useAuth((s) => s.member);
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && setOpen(false);
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  if (!member) return null;
+
+  const name = `${member.firstName} ${member.lastName}`;
+  const secondary = member.jobTitle || ROLE_LABELS[member.role] || member.email;
+
+  const copyEmail = async () => {
+    await navigator.clipboard?.writeText(member.email);
+    setOpen(false);
+    toast.success('Email copiata');
+  };
+
+  if (collapsed) {
+    return (
+      <div ref={menuRef} className="relative">
+        <button
+          onClick={() => setOpen((value) => !value)}
+          className="press flex h-9 w-full items-center justify-center rounded-md hover:bg-surface-2/65"
+          title={name}
+        >
+          <Avatar name={name} color={member.avatarColor} size="xs" />
+        </button>
+        {open && (
+          <div className="absolute bottom-0 left-full z-40 ml-1 w-44 rounded-lg border border-border bg-surface p-1 shadow-pop">
+            <button
+              onClick={copyEmail}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-fg-subtle transition-colors hover:bg-surface-2 hover:text-fg"
+            >
+              <Copy className="h-4 w-4" /> Copia email
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={menuRef} className="relative">
+      <button
+        onClick={() => setOpen((value) => !value)}
+        className="press flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors hover:bg-surface-2/65"
+      >
+        <Avatar name={name} color={member.avatarColor} size="sm" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[13px] font-medium text-fg">{name}</span>
+          <span className="block truncate text-[11px] text-fg-faint">{secondary}</span>
+        </span>
+        <MoreHorizontal className="h-4 w-4 shrink-0 text-fg-faint" />
+      </button>
+
+      {open && (
+        <div className="absolute bottom-full left-0 z-40 mb-1 w-full rounded-lg border border-border bg-surface p-1 shadow-pop">
+          <button
+            onClick={copyEmail}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-fg-subtle transition-colors hover:bg-surface-2 hover:text-fg"
+          >
+            <Copy className="h-4 w-4" /> Copia email
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Sidebar desktop: larghezza persistente e ridimensionabile con maniglia. */
 export function Sidebar() {
   const collapsed = useUI((s) => s.sidebarCollapsed);
   const toggle = useUI((s) => s.toggleSidebar);
   const width = useUI((s) => s.sidebarWidth);
   const setWidth = useUI((s) => s.setSidebarWidth);
+  const logout = useAuth((s) => s.logout);
+  const navigate = useNavigate();
   const dragging = useRef(false);
 
   const onPointerMove = useCallback(
@@ -137,35 +254,36 @@ export function Sidebar() {
   return (
     <aside
       style={{ width: collapsed ? 64 : width }}
-      className="relative sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-surface/95 shadow-[18px_0_44px_-42px_rgba(15,15,16,0.9)] transition-[width] duration-200 ease-smooth md:flex"
+      className="relative sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-200 ease-smooth md:flex"
     >
-      <div className="flex h-12 items-center justify-end px-3 pt-2">
-        <button
-          onClick={toggle}
-          className="press rounded-md p-1.5 text-fg-faint hover:bg-surface-2 hover:text-fg-subtle"
-          aria-label={collapsed ? 'Espandi sidebar' : 'Comprimi sidebar'}
-        >
-          {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-        </button>
-      </div>
+      <BrandHeader collapsed={collapsed} onToggle={toggle} />
 
       <SidebarNav collapsed={collapsed} />
 
-      {!collapsed && (
-        <div className="px-3 pb-3">
-          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-surface-2/80 px-3 py-2">
-            <span
-              className={cn(
-                'h-1.5 w-1.5 shrink-0 rounded-full',
-                IS_DEMO ? 'bg-accent' : 'bg-success',
-              )}
-            />
-            <p className="text-2xs leading-tight text-fg-subtle">
-              {IS_DEMO ? 'Demo locale · dati nel browser' : 'Supabase · dati in cloud'}
-            </p>
-          </div>
+      <div className="mt-auto space-y-1 px-2 pb-2">
+        {collapsed && (
+          <button
+            onClick={toggle}
+            className="press flex h-8 w-full items-center justify-center rounded-md text-fg-faint hover:bg-surface-2 hover:text-fg-subtle"
+            aria-label="Espandi sidebar"
+          >
+            <PanelLeft className="h-4 w-4" />
+          </button>
+        )}
+        <SidebarUtilityRow icon={Settings} label="Impostazioni" to="/settings" collapsed={collapsed} />
+        <SidebarUtilityRow
+          icon={LogOut}
+          label="Logout"
+          collapsed={collapsed}
+          onClick={() => {
+            logout();
+            navigate('/login');
+          }}
+        />
+        <div className="pt-1">
+          <ProfileRow collapsed={collapsed} />
         </div>
-      )}
+      </div>
 
       {/* Maniglia di ridimensionamento */}
       {!collapsed && (

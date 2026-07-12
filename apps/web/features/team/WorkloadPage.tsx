@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Hash, Pause, Play, Send, Square, Trash2 } from 'lucide-react';
+import { Hash, MoreHorizontal, Pause, Pencil, Play, Send, Square, Trash2, X } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -8,7 +8,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { EmptyState, LoadingState } from '@/components/ui/States';
-import { useCreate, useList, useRemove } from '@/hooks/useEntities';
+import { useCreate, useList, useRemove, useUpdate } from '@/hooks/useEntities';
 import { useAuth } from '@/stores/auth';
 import { useTimer } from '@/features/time-tracking/timerStore';
 import { formatHours, formatRelative } from '@/lib/format';
@@ -48,12 +48,17 @@ export default function WorkloadPage() {
   const { data: comments, isLoading: commentsLoading } = useList<Comment>('comments');
   const { data: entries, isLoading: entriesLoading } = useList<TimeEntry>('timeEntries');
   const createComment = useCreate<Comment>('comments');
+  const updateComment = useUpdate<Comment>('comments');
   const removeComment = useRemove('comments');
   const createEntry = useCreate<TimeEntry>('timeEntries');
   const member = useAuth((state) => state.member);
+  const role = useAuth((state) => state.role);
   const timer = useTimer();
   const [params, setParams] = useSearchParams();
   const [draft, setDraft] = useState('');
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Comment | null>(null);
   const [, forceTick] = useState(0);
 
@@ -115,6 +120,29 @@ export default function WorkloadPage() {
     await removeComment.mutateAsync(deleteTarget.id);
     setDeleteTarget(null);
     toast.success('Messaggio eliminato');
+  };
+
+  const canManageComment = (comment: Comment) =>
+    Boolean(member && (comment.authorId === member.id || role === 'owner' || role === 'admin'));
+
+  const startEditComment = (comment: Comment) => {
+    setOpenMenuId(null);
+    setEditingId(comment.id);
+    setEditingDraft(comment.content);
+  };
+
+  const cancelEditComment = () => {
+    setEditingId(null);
+    setEditingDraft('');
+  };
+
+  const saveEditComment = async (comment: Comment) => {
+    const content = editingDraft.trim();
+    if (!content) return;
+    await updateComment.mutateAsync({ id: comment.id, patch: { content, edited: true } });
+    setEditingId(null);
+    setEditingDraft('');
+    toast.success('Messaggio modificato');
   };
 
   const startTimer = () => {
@@ -224,6 +252,8 @@ export default function WorkloadPage() {
                 <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
                   {projectComments.map((comment) => {
                     const author = comment.authorId ? commentAuthors.get(comment.authorId) : undefined;
+                    const canEdit = canManageComment(comment);
+                    const isEditing = editingId === comment.id;
                     return (
                       <div key={comment.id} className="rounded-xl border border-border bg-surface px-4 py-3">
                         <div className="flex items-start justify-between gap-3">
@@ -237,19 +267,69 @@ export default function WorkloadPage() {
                               <p className="text-sm font-medium">
                                 {author ? `${author.firstName} ${author.lastName}` : 'Sistema'}
                               </p>
-                              <p className="text-xs text-fg-subtle">{formatRelative(comment.createdAt)}</p>
+                              <p className="text-xs text-fg-subtle">
+                                {formatRelative(comment.createdAt)}
+                                {comment.edited && <span className="ml-1 text-fg-faint">· modificato</span>}
+                              </p>
                             </div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeleteTarget(comment)}
-                            aria-label="Elimina messaggio"
-                          >
-                            <Trash2 className="h-4 w-4 text-danger" />
-                          </Button>
+                          {canEdit && (
+                            <div className="relative">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setOpenMenuId((current) => (current === comment.id ? null : comment.id))}
+                                aria-label="Azioni messaggio"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                              {openMenuId === comment.id && (
+                                <div className="absolute right-0 top-full z-20 mt-1 w-36 rounded-lg border border-border bg-surface p-1 shadow-pop">
+                                  <button
+                                    onClick={() => startEditComment(comment)}
+                                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-fg-subtle transition-colors hover:bg-surface-2 hover:text-fg"
+                                  >
+                                    <Pencil className="h-4 w-4" /> Modifica
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setOpenMenuId(null);
+                                      setDeleteTarget(comment);
+                                    }}
+                                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-danger transition-colors hover:bg-danger/10"
+                                  >
+                                    <Trash2 className="h-4 w-4" /> Elimina
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <p className="mt-3 whitespace-pre-wrap text-sm text-fg-subtle">{comment.content}</p>
+                        {isEditing ? (
+                          <div className="mt-3 space-y-2">
+                            <textarea
+                              value={editingDraft}
+                              onChange={(event) => setEditingDraft(event.target.value)}
+                              className="min-h-24 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition-colors focus:border-border-strong"
+                              aria-label="Modifica messaggio"
+                            />
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="sm" onClick={cancelEditComment}>
+                                <X className="h-4 w-4" /> Annulla
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => saveEditComment(comment)}
+                                loading={updateComment.isPending}
+                                disabled={!editingDraft.trim()}
+                              >
+                                Salva
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="mt-3 whitespace-pre-wrap text-sm text-fg-subtle">{comment.content}</p>
+                        )}
                       </div>
                     );
                   })}

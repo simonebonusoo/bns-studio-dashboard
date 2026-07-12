@@ -148,7 +148,7 @@ export default function InvoiceDetailPage() {
                     <p className="font-medium">{formatCurrency(p.amount)}</p>
                     <p className="text-xs text-fg-subtle">{formatDate(p.date)} · {p.method}</p>
                   </div>
-                  <StatusBadge status="paid" />
+                  <StatusBadge status={p.status} />
                 </li>
               ))}
               {invPayments.length === 0 && <li className="px-4 py-6 text-center text-sm text-fg-subtle">Nessun pagamento</li>}

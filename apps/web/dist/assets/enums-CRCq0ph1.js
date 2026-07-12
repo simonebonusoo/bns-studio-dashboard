@@ -1,1 +1,0 @@
-const e=["owner","admin","project_manager","designer","developer","collaborator","accountant","client"],o={owner:"Proprietario",admin:"Amministratore",project_manager:"Project Manager",designer:"Designer",developer:"Developer",collaborator:"Collaboratore",accountant:"Contabile",client:"Cliente"};export{o as R,e as a};
