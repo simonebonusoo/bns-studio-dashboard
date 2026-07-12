@@ -110,7 +110,7 @@ export default function DashboardPage() {
     { label: 'Nuovo cliente', icon: UserPlus, onClick: () => navigate('/clients?new=1') },
     { label: 'Nuovo progetto', icon: FolderPlus, onClick: () => navigate('/projects?new=1') },
     { label: 'Nuovo preventivo', icon: FileText, onClick: () => navigate('/estimates?new=1') },
-    { label: 'Nuova fattura', icon: Receipt, onClick: () => navigate('/invoices') },
+    { label: 'Nuova fattura', icon: Receipt, onClick: () => navigate('/invoices?new=1') },
     { label: 'Registra pagamento', icon: CreditCard, onClick: () => navigate('/payments?new=1') },
     { label: 'Avvia timer', icon: Play, onClick: startTimer },
     { label: 'Carica file', icon: Upload, onClick: () => navigate('/files?upload=1') },

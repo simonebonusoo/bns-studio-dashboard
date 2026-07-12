@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/components/ui/Modal';
 import { useDetail, useList, useUpdate } from '@/hooks/useEntities';
 import { useRemoveFile, useFileUrl } from '@/hooks/useFiles';
 import { useFolders } from './foldersStore';
+import { DOCUMENT_CATEGORIES, SOURCE_TYPES } from './documentCategories';
 import { formatDate } from '@/lib/format';
 import type { FileItem, Project, Client } from '@/types';
 import { toast } from 'sonner';
@@ -66,6 +67,16 @@ export function FileDetailDrawer({ fileId, onClose }: { fileId: string | null; o
             <Select value={file.folder ?? ''} onChange={(e) => patch({ folder: e.target.value || undefined })}>
               <option value="">—</option>
               {folders.map((f) => <option key={f} value={f}>{f}</option>)}
+            </Select>
+          </F>
+          <F label="Categoria documento">
+            <Select value={file.documentCategory ?? 'Altro'} onChange={(e) => patch({ documentCategory: e.target.value as FileItem['documentCategory'] })}>
+              {DOCUMENT_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+            </Select>
+          </F>
+          <F label="Origine">
+            <Select value={file.entityType ?? 'generic'} onChange={(e) => patch({ entityType: e.target.value as FileItem['entityType'] })}>
+              {SOURCE_TYPES.map((source) => <option key={source.value} value={source.value}>{source.label}</option>)}
             </Select>
           </F>
           <F label="Tag (separati da virgola)">

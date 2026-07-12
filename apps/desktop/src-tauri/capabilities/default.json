@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Capacità di base per la finestra principale di BnsStudio",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "dialog:default", "fs:default", "opener:default"]
 }

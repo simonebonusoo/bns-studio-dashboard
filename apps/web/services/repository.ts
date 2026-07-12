@@ -32,7 +32,7 @@ export interface EntityRepository<T extends BaseRow> {
 }
 
 type PublicTables = Database['public']['Tables'];
-type TableName = keyof PublicTables;
+type TableName = keyof PublicTables | 'payment_installments';
 
 const ACTIVITY_ENTITY_BY_TABLE: Partial<Record<TableName, string>> = {
   members: 'member',
@@ -47,6 +47,7 @@ const ACTIVITY_ENTITY_BY_TABLE: Partial<Record<TableName, string>> = {
   estimates: 'estimate',
   invoices: 'invoice',
   payments: 'payment',
+  payment_installments: 'payment_installment',
   transactions: 'transaction',
   contracts: 'contract',
   files: 'file',
@@ -266,7 +267,8 @@ interface DbTableQuery {
 }
 
 function dbTable<K extends TableName>(name: K): DbTableQuery {
-  return getSupabaseClient().from(name) as unknown as DbTableQuery;
+  const from = getSupabaseClient().from as unknown as (relation: string) => unknown;
+  return from(name) as DbTableQuery;
 }
 
 interface SupabaseRepoOptions {
@@ -392,6 +394,7 @@ export const repositories = {
   estimates: createRepository('estimates', db.estimates),
   invoices: createRepository('invoices', db.invoices),
   payments: createRepository('payments', db.payments),
+  paymentInstallments: createRepository('payment_installments', db.paymentInstallments),
   transactions: createRepository('transactions', db.transactions),
   contracts: createRepository('contracts', db.contracts),
   files: createRepository('files', db.files),

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Copy } from 'lucide-react';
 import { Modal, ConfirmDialog } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -11,8 +11,20 @@ const TYPES: { value: CalendarEvent['type']; label: string }[] = [
   { value: 'meeting', label: 'Riunione' },
   { value: 'client_call', label: 'Call cliente' },
   { value: 'project_deadline', label: 'Scadenza progetto' },
+  { value: 'deadline', label: 'Deadline' },
+  { value: 'work', label: 'Lavoro operativo' },
+  { value: 'administration', label: 'Amministrazione' },
+  { value: 'personal', label: 'Personale' },
   { value: 'time_off', label: 'Assenza / ferie' },
   { value: 'custom', label: 'Altro' },
+];
+
+const RECURRENCES: { value: NonNullable<CalendarEvent['recurrence']>; label: string }[] = [
+  { value: 'none', label: 'Non ricorrente' },
+  { value: 'daily', label: 'Ogni giorno' },
+  { value: 'weekly', label: 'Ogni settimana' },
+  { value: 'monthly', label: 'Ogni mese' },
+  { value: 'yearly', label: 'Ogni anno' },
 ];
 
 /** Estrae le parti data/ora locali da una stringa ISO. */
@@ -50,25 +62,54 @@ export function EventFormModal({ draft, onClose }: { draft: EventDraft | null; o
     end: draft?.end ?? new Date(Date.now() + 36e5).toISOString(), allDay: draft?.allDay ?? false,
     clientId: '', projectId: '', location: '', meetingLink: '', description: '', attendeeIds: [] as string[],
     reminderMinutes: 15, visibility: 'internal' as const,
+    recurrence: 'none' as const, recurrenceUntil: '', invitedEmails: [] as string[], notes: '',
   };
   const sp = parts(init.start);
   const ep = parts(init.end);
+  const initialForm = useMemo(
+    () => ({
+      title: init.title,
+      type: init.type,
+      startDate: sp.date,
+      startTime: sp.time,
+      endDate: ep.date,
+      endTime: ep.time,
+      allDay: init.allDay,
+      clientId: init.clientId ?? '',
+      projectId: init.projectId ?? '',
+      location: init.location ?? '',
+      meetingLink: init.meetingLink ?? '',
+      description: init.description ?? '',
+      attendeeIds: init.attendeeIds ?? [],
+      reminderMinutes: String(init.reminderMinutes ?? 15),
+      visibility: init.visibility ?? 'internal',
+      recurrence: init.recurrence ?? 'none',
+      recurrenceUntil: init.recurrenceUntil ? parts(init.recurrenceUntil).date : '',
+      invitedEmails: (init.invitedEmails ?? []).join(', '),
+      notes: init.notes ?? '',
+    }),
+    [ep.date, ep.time, init.allDay, init.attendeeIds, init.clientId, init.description, init.invitedEmails, init.location, init.meetingLink, init.notes, init.projectId, init.recurrence, init.recurrenceUntil, init.reminderMinutes, init.title, init.type, init.visibility, sp.date, sp.time],
+  );
 
-  const [form, setForm] = useState({
-    title: init.title, type: init.type, startDate: sp.date, startTime: sp.time, endDate: ep.date, endTime: ep.time,
-    allDay: init.allDay, clientId: init.clientId ?? '', projectId: init.projectId ?? '',
-    location: init.location ?? '', meetingLink: init.meetingLink ?? '', description: init.description ?? '',
-    attendeeIds: init.attendeeIds ?? [], reminderMinutes: String(init.reminderMinutes ?? 15), visibility: init.visibility ?? 'internal',
-  });
+  const [form, setForm] = useState(initialForm);
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
 
-  const buildPayload = () => ({
+  useEffect(() => {
+    if (!draft) return;
+    setForm(initialForm);
+  }, [draft, initialForm]);
+
+  const buildPayload = (): Partial<CalendarEvent> => ({
     title: form.title || 'Evento', type: form.type,
     start: combine(form.startDate, form.allDay ? '00:00' : form.startTime),
     end: combine(form.endDate || form.startDate, form.allDay ? '23:59' : form.endTime),
     allDay: form.allDay, clientId: form.clientId || null, projectId: form.projectId || null,
     location: form.location, meetingLink: form.meetingLink, description: form.description,
     attendeeIds: form.attendeeIds, reminderMinutes: Number(form.reminderMinutes) || 0, visibility: form.visibility,
+    recurrence: form.recurrence,
+    recurrenceUntil: form.recurrenceUntil ? combine(form.recurrenceUntil, '23:59') : null,
+    invitedEmails: form.invitedEmails.split(',').map((email) => email.trim()).filter(Boolean),
+    notes: form.notes,
   });
 
   const submit = async () => {
@@ -95,7 +136,7 @@ export function EventFormModal({ draft, onClose }: { draft: EventDraft | null; o
             <div className="flex gap-2">
               {editing && <Button variant="secondary" size="sm" onClick={duplicate}><Copy className="h-4 w-4" /> Duplica</Button>}
               <Button variant="ghost" onClick={onClose}>Annulla</Button>
-              <Button onClick={submit}>{editing ? 'Salva' : 'Crea'}</Button>
+              <Button onClick={submit} loading={create.isPending || update.isPending}>{editing ? 'Salva' : 'Crea'}</Button>
             </div>
           </div>
         }
@@ -114,8 +155,11 @@ export function EventFormModal({ draft, onClose }: { draft: EventDraft | null; o
 
           <Field label="Cliente"><Select value={form.clientId} onChange={(e) => set('clientId', e.target.value)}><option value="">—</option>{(clients ?? []).map((c) => <option key={c.id} value={c.id}>{c.displayName}</option>)}</Select></Field>
           <Field label="Progetto"><Select value={form.projectId} onChange={(e) => set('projectId', e.target.value)}><option value="">—</option>{(projects ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></Field>
+          <Field label="Ricorrenza"><Select value={form.recurrence} onChange={(e) => set('recurrence', e.target.value)}>{RECURRENCES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}</Select></Field>
+          <Field label="Fine ricorrenza"><Input type="date" value={form.recurrenceUntil} onChange={(e) => set('recurrenceUntil', e.target.value)} disabled={form.recurrence === 'none'} /></Field>
           <Field label="Luogo"><Input value={form.location} onChange={(e) => set('location', e.target.value)} /></Field>
           <Field label="Meeting link"><Input value={form.meetingLink} onChange={(e) => set('meetingLink', e.target.value)} placeholder="https://…" /></Field>
+          <Field label="Invitati esterni" className="col-span-2"><Input value={form.invitedEmails} onChange={(e) => set('invitedEmails', e.target.value)} placeholder="email@cliente.it, studio@partner.it" /></Field>
 
           <div className="col-span-2">
             <p className="mb-1.5 text-xs font-medium text-fg-subtle">Partecipanti</p>
@@ -129,6 +173,7 @@ export function EventFormModal({ draft, onClose }: { draft: EventDraft | null; o
 
           <Field label="Promemoria"><Select value={form.reminderMinutes} onChange={(e) => set('reminderMinutes', e.target.value)}><option value="0">Nessuno</option><option value="15">15 min prima</option><option value="30">30 min prima</option><option value="60">1 ora prima</option><option value="1440">1 giorno prima</option></Select></Field>
           <Field label="Descrizione" className="col-span-2"><Textarea value={form.description} onChange={(e) => set('description', e.target.value)} /></Field>
+          <Field label="Note operative" className="col-span-2"><Textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Brief, contesto o follow-up interni" /></Field>
         </div>
       </Modal>
       <ConfirmDialog open={confirmDel} onClose={() => setConfirmDel(false)} onConfirm={del} title="Elimina evento" message="Eliminare questo evento?" confirmLabel="Elimina" danger />

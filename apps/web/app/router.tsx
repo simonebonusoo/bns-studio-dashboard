@@ -14,7 +14,7 @@ const ProjectsPage = lazy(() => import('@/features/projects/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('@/features/projects/ProjectDetailPage'));
 const CalendarPage = lazy(() => import('@/features/calendar/CalendarPage'));
 const TeamPage = lazy(() => import('@/features/team/TeamPage'));
-const WorkloadPage = lazy(() => import('@/features/team/WorkloadPage'));
+const HubPage = lazy(() => import('@/features/team/WorkloadPage'));
 const TimePage = lazy(() => import('@/features/time-tracking/TimePage'));
 const EstimatesPage = lazy(() => import('@/features/estimates/EstimatesPage'));
 const EstimateDetailPage = lazy(() => import('@/features/estimates/EstimateDetailPage'));
@@ -51,7 +51,8 @@ export const router = createBrowserRouter([
       { path: 'projects/:id', element: <ProjectDetailPage /> },
       { path: 'calendar', element: <CalendarPage /> },
       { path: 'team', element: <TeamPage /> },
-      { path: 'workload', element: <WorkloadPage /> },
+      { path: 'hub', element: <HubPage /> },
+      { path: 'workload', element: <HubPage /> },
       { path: 'time', element: <TimePage /> },
       { path: 'estimates', element: <EstimatesPage /> },
       { path: 'estimates/:id', element: <EstimateDetailPage /> },

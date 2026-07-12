@@ -5,21 +5,48 @@ import {
   format, isSameMonth, isSameDay, parseISO, differenceInCalendarDays,
 } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, Clock, Flag } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, ExternalLink, Flag, MapPin, Pencil, Plus, Repeat2, Trash2, Users, Video } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { LoadingState } from '@/components/ui/States';
-import { useList, useUpdate } from '@/hooks/useEntities';
+import { Drawer } from '@/components/ui/Drawer';
+import { Badge } from '@/components/ui/Badge';
+import { ConfirmDialog } from '@/components/ui/Modal';
+import { useList, useRemove, useUpdate } from '@/hooks/useEntities';
 import { EventFormModal, type EventDraft } from './EventFormModal';
 import { cn } from '@/lib/cn';
-import type { CalendarEvent, Milestone } from '@/types';
+import { formatDate, formatDateTime } from '@/lib/format';
+import type { CalendarEvent, Client, Member, Milestone, Project } from '@/types';
+import { toast } from 'sonner';
 
 type View = 'month' | 'week' | 'day' | 'agenda';
 
 const TYPE_COLORS: Record<string, string> = {
   client_call: '#3b76d6', meeting: '#9b5de5',
-  project_deadline: '#f24e6b', time_off: '#22a05a', custom: '#71717a',
+  project_deadline: '#f24e6b', deadline: '#f24e6b',
+  work: '#0f9f8f', administration: '#f59e0b', personal: '#22a05a',
+  time_off: '#22a05a', custom: '#71717a',
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  meeting: 'Riunione',
+  client_call: 'Call cliente',
+  project_deadline: 'Scadenza progetto',
+  deadline: 'Deadline',
+  work: 'Lavoro operativo',
+  administration: 'Amministrazione',
+  personal: 'Personale',
+  time_off: 'Assenza / ferie',
+  custom: 'Altro',
+};
+
+const RECURRENCE_LABELS: Record<string, string> = {
+  none: 'Non ricorrente',
+  daily: 'Giornaliera',
+  weekly: 'Settimanale',
+  monthly: 'Mensile',
+  yearly: 'Annuale',
 };
 
 interface CalItem {
@@ -37,12 +64,16 @@ interface CalItem {
 export default function CalendarPage() {
   const { data: events, isLoading } = useList<CalendarEvent>('events');
   const { data: milestones } = useList<Milestone>('milestones');
+  const { data: clients } = useList<Client>('clients');
+  const { data: projects } = useList<Project>('projects');
+  const { data: members } = useList<Member>('members');
   const updateEvent = useUpdate<CalendarEvent>('events');
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [view, setView] = useState<View>('month');
   const [cursor, setCursor] = useState(new Date());
   const [draft, setDraft] = useState<EventDraft | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -70,7 +101,7 @@ export default function CalendarPage() {
   const itemsOn = (day: Date) => items.filter((i) => isSameDay(parseISO(i.start), day)).sort((a, b) => a.start < b.start ? -1 : 1);
 
   const openItem = (item: CalItem) => {
-    if (item.kind === 'event') setDraft({ id: item.id, start: item.start, end: item.end });
+    if (item.kind === 'event') setSelectedEventId(item.id);
     else if (item.link) navigate(item.link);
   };
 
@@ -135,6 +166,17 @@ export default function CalendarPage() {
       </div>
 
       <EventFormModal draft={draft} onClose={() => setDraft(null)} />
+      <EventDetailDrawer
+        event={(events ?? []).find((event) => event.id === selectedEventId)}
+        clients={clients ?? []}
+        projects={projects ?? []}
+        members={members ?? []}
+        onClose={() => setSelectedEventId(null)}
+        onEdit={(event) => {
+          setSelectedEventId(null);
+          setDraft({ id: event.id, start: event.start, end: event.end, allDay: event.allDay });
+        }}
+      />
     </div>
   );
 }
@@ -269,4 +311,141 @@ function AgendaView({ items, onOpen }: { items: CalItem[]; onOpen: (i: CalItem) 
 
 function Legend({ color, label, icon }: { color: string; label: string; icon: React.ReactNode }) {
   return <span className="flex items-center gap-1.5"><span className="flex h-4 w-4 items-center justify-center rounded" style={{ backgroundColor: `${color}33`, color }}>{icon}</span>{label}</span>;
+}
+
+function EventDetailDrawer({
+  event,
+  clients,
+  projects,
+  members,
+  onClose,
+  onEdit,
+}: {
+  event?: CalendarEvent;
+  clients: Client[];
+  projects: Project[];
+  members: Member[];
+  onClose: () => void;
+  onEdit: (event: CalendarEvent) => void;
+}) {
+  const remove = useRemove('events');
+  const [confirmDel, setConfirmDel] = useState(false);
+  const client = event?.clientId ? clients.find((item) => item.id === event.clientId) : undefined;
+  const project = event?.projectId ? projects.find((item) => item.id === event.projectId) : undefined;
+  const attendees = (event?.attendeeIds ?? [])
+    .map((id) => members.find((member) => member.id === id))
+    .filter(Boolean) as Member[];
+  const recurrence = event?.recurrence ?? 'none';
+
+  const del = async () => {
+    if (!event) return;
+    await remove.mutateAsync(event.id);
+    toast.success(recurrence === 'none' ? 'Evento eliminato' : 'Serie evento eliminata');
+    onClose();
+  };
+
+  return (
+    <>
+      <Drawer
+        open={!!event}
+        onClose={onClose}
+        title={event?.title ?? 'Evento'}
+        subtitle={event ? TYPE_LABELS[event.type] ?? event.type : undefined}
+        width="md"
+        footer={event ? (
+          <>
+            <Button variant="ghost" size="sm" onClick={() => setConfirmDel(true)}>
+              <Trash2 className="h-4 w-4 text-danger" /> Elimina
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => onEdit(event)}>
+              <Pencil className="h-4 w-4" /> Modifica
+            </Button>
+          </>
+        ) : undefined}
+      >
+        {event ? (
+          <div className="space-y-5">
+            <div className="flex flex-wrap gap-2">
+              <Badge tone="accent">{TYPE_LABELS[event.type] ?? event.type}</Badge>
+              <Badge tone={event.visibility === 'client' ? 'info' : event.visibility === 'team' ? 'success' : 'neutral'}>
+                {event.visibility === 'client' ? 'Cliente' : event.visibility === 'team' ? 'Team' : 'Interno'}
+              </Badge>
+              {recurrence !== 'none' && <Badge tone="warning"><Repeat2 className="h-3 w-3" /> {RECURRENCE_LABELS[recurrence] ?? recurrence}</Badge>}
+            </div>
+
+            <div className="rounded-xl border border-border bg-surface-2/50 p-4">
+              <DetailRow icon={<CalendarDays className="h-4 w-4" />} label="Quando" value={event.allDay ? `${formatDate(event.start)} · tutto il giorno` : `${formatDateTime(event.start)} → ${formatDateTime(event.end)}`} />
+              {recurrence !== 'none' && <DetailRow icon={<Repeat2 className="h-4 w-4" />} label="Ricorrenza" value={`${RECURRENCE_LABELS[recurrence] ?? recurrence}${event.recurrenceUntil ? ` fino al ${formatDate(event.recurrenceUntil)}` : ''}`} />}
+              {event.location && <DetailRow icon={<MapPin className="h-4 w-4" />} label="Luogo" value={event.location} />}
+              {event.meetingLink && (
+                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-surface px-3 py-2">
+                  <span className="min-w-0 truncate text-sm text-fg-subtle"><Video className="mr-2 inline h-4 w-4" /> {event.meetingLink}</span>
+                  <Button variant="secondary" size="sm" onClick={() => window.open(event.meetingLink, '_blank', 'noopener,noreferrer')}>
+                    <ExternalLink className="h-4 w-4" /> Apri
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <InfoCard label="Cliente" value={client?.displayName ?? '—'} />
+              <InfoCard label="Progetto" value={project?.name ?? '—'} />
+            </div>
+
+            <section>
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-fg-faint"><Users className="h-3.5 w-3.5" /> Partecipanti</p>
+              <div className="flex flex-wrap gap-1.5">
+                {attendees.map((member) => <Badge key={member.id}>{member.firstName} {member.lastName}</Badge>)}
+                {(event.invitedEmails ?? []).map((email) => <Badge key={email} tone="info">{email}</Badge>)}
+                {attendees.length === 0 && (event.invitedEmails ?? []).length === 0 && <p className="text-sm text-fg-subtle">Nessun partecipante indicato</p>}
+              </div>
+            </section>
+
+            {event.description && <TextBlock label="Descrizione" value={event.description} />}
+            {event.notes && <TextBlock label="Note operative" value={event.notes} />}
+          </div>
+        ) : null}
+      </Drawer>
+
+      <ConfirmDialog
+        open={confirmDel}
+        onClose={() => setConfirmDel(false)}
+        onConfirm={del}
+        title={recurrence === 'none' ? 'Elimina evento' : 'Elimina serie evento'}
+        message={recurrence === 'none' ? 'Eliminare questo evento?' : 'Eliminare questa serie ricorrente?'}
+        confirmLabel="Elimina"
+        danger
+      />
+    </>
+  );
+}
+
+function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex gap-3 text-sm">
+      <span className="mt-0.5 text-fg-faint">{icon}</span>
+      <div>
+        <p className="text-2xs font-semibold uppercase tracking-wide text-fg-faint">{label}</p>
+        <p className="text-fg">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function InfoCard({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-lg bg-surface-2 px-3 py-2">
+      <p className="text-2xs font-semibold uppercase tracking-wide text-fg-faint">{label}</p>
+      <p className="truncate text-sm font-medium">{value}</p>
+    </div>
+  );
+}
+
+function TextBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <section>
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fg-faint">{label}</p>
+      <p className="whitespace-pre-wrap rounded-lg bg-surface-2 px-3 py-2 text-sm text-fg-subtle">{value}</p>
+    </section>
+  );
 }

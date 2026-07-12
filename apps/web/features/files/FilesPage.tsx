@@ -23,6 +23,7 @@ import { DataTable, type Column } from '@/components/tables/DataTable';
 import { useList } from '@/hooks/useEntities';
 import { useUploadFile, useRemoveFile } from '@/hooks/useFiles';
 import { useFolders } from './foldersStore';
+import { DOCUMENT_CATEGORIES } from './documentCategories';
 import { FileDetailDrawer } from './FileDetailDrawer';
 import { useUI } from '@/stores/ui';
 import { cn } from '@/lib/cn';
@@ -48,7 +49,9 @@ export default function FilesPage() {
   const filesView = useUI((state) => state.filesView);
   const setFilesView = useUI((state) => state.setFilesView);
   const [params, setParams] = useSearchParams();
+  const projectFilter = params.get('projectId');
   const [folder, setFolder] = useState('all');
+  const [category, setCategory] = useState('all');
   const [openId, setOpenId] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -66,9 +69,21 @@ export default function FilesPage() {
   const clientName = (id?: string | null) => (clients ?? []).find((client) => client.id === id)?.displayName ?? '—';
 
   const filtered = useMemo(
-    () => (files ?? []).filter((file) => folder === 'all' || file.folder === folder),
-    [files, folder],
+    () =>
+      (files ?? []).filter((file) => {
+        const matchesFolder = folder === 'all' || file.folder === folder;
+        const matchesProject = !projectFilter || file.projectId === projectFilter;
+        const matchesCategory = category === 'all' || (file.documentCategory ?? 'Altro') === category;
+        return matchesFolder && matchesProject && matchesCategory;
+      }),
+    [category, files, folder, projectFilter],
   );
+
+  const clearProjectFilter = () => {
+    const next = new URLSearchParams(params);
+    next.delete('projectId');
+    setParams(next, { replace: true });
+  };
 
   const onUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(event.target.files ?? []);
@@ -78,6 +93,8 @@ export default function FilesPage() {
         await upload.mutateAsync({
           file,
           folder: folder === 'all' ? undefined : folder,
+          projectId: projectFilter,
+          documentCategory: category === 'all' ? undefined : category as FileItem['documentCategory'],
           clientVisible: false,
           tags: [],
         });
@@ -130,9 +147,9 @@ export default function FilesPage() {
     },
     {
       key: 'type',
-      header: 'Tipo',
-      sortValue: (file) => file.mime,
-      render: (file) => <span className="text-fg-subtle">{file.mime || '—'}</span>,
+      header: 'Categoria',
+      sortValue: (file) => file.documentCategory ?? 'Altro',
+      render: (file) => <Badge tone="neutral">{file.documentCategory ?? 'Altro'}</Badge>,
     },
     {
       key: 'project',
@@ -229,6 +246,27 @@ export default function FilesPage() {
           );
         })}
       </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        <FolderChip active={category === 'all'} onClick={() => setCategory('all')} label="Tutte le categorie" />
+        {DOCUMENT_CATEGORIES.map((item) => (
+          <FolderChip
+            key={item}
+            active={category === item}
+            onClick={() => setCategory(item)}
+            label={`${item} (${(files ?? []).filter((file) => (file.documentCategory ?? 'Altro') === item).length})`}
+          />
+        ))}
+      </div>
+
+      {projectFilter && (
+        <div className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3 text-sm">
+          <div className="text-fg-subtle">Archivio filtrato sul progetto selezionato. I nuovi upload saranno collegati automaticamente a questo progetto.</div>
+          <Button variant="ghost" size="sm" onClick={clearProjectFilter}>
+            <X className="h-4 w-4" /> Mostra tutti i file
+          </Button>
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <EmptyState

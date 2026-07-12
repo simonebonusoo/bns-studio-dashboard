@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Trash2, Ban, Briefcase } from 'lucide-react';
+import { Ban, Briefcase, Euro, Mail, Sparkles, Trash2 } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
@@ -81,9 +81,14 @@ export function MemberDetailDrawer({ memberId, onClose }: { memberId: string | n
         <div className="space-y-5">
           <div className="flex items-center gap-3">
             <Avatar name={`${member.firstName} ${member.lastName}`} color={member.avatarColor} size="lg" />
-            <div className="flex flex-wrap gap-1.5">
-              <Badge tone="accent">{ROLE_LABELS[member.role]}</Badge>
-              <StatusChip status={member.status} />
+            <div className="min-w-0">
+              <div className="flex flex-wrap gap-1.5">
+                <Badge tone="accent">{ROLE_LABELS[member.role]}</Badge>
+                <StatusChip status={member.status} />
+              </div>
+              <a href={`mailto:${member.email}`} className="mt-2 flex items-center gap-1.5 truncate text-sm text-fg-subtle hover:text-fg">
+                <Mail className="h-3.5 w-3.5" /> {member.email}
+              </a>
             </div>
           </div>
 
@@ -92,6 +97,22 @@ export function MemberDetailDrawer({ memberId, onClose }: { memberId: string | n
             <Stat label="Progetti" value={memberProjects.length} />
             <Stat label="Capacità" value={`${member.weeklyHours}h`} />
             <Stat label="Ore reg." value={formatHours(loggedMin)} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <InfoTile icon={<Euro className="h-4 w-4" />} label="Costo interno" value={`€${member.internalRate}/h`} />
+            <InfoTile icon={<Euro className="h-4 w-4" />} label="Tariffa cliente" value={`€${member.clientRate}/h`} />
+          </div>
+
+          <div className="rounded-xl border border-border bg-surface-2/50 p-3">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-fg-faint">
+              <Sparkles className="h-3.5 w-3.5" /> Skill e collaborazione
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {(member.skills ?? []).map((skill) => <Badge key={skill}>{skill}</Badge>)}
+              {(member.skills ?? []).length === 0 && <span className="text-sm text-fg-subtle">Nessuna skill indicata</span>}
+            </div>
+            <p className="mt-3 text-sm text-fg-subtle">Contratto: <span className="font-medium text-fg">{COLLAB_LABELS[member.collaborationType] ?? member.collaborationType}</span></p>
           </div>
 
           <div>
@@ -120,9 +141,20 @@ export function MemberDetailDrawer({ memberId, onClose }: { memberId: string | n
                     <option value="inactive">Inattivo</option>
                   </Select>
                 </F>
+                <F label="Email"><Input type="email" defaultValue={member.email} onBlur={(e) => patch({ email: e.target.value })} /></F>
                 <F label="Ore/settimana"><Input type="number" defaultValue={member.weeklyHours} onBlur={(e) => patch({ weeklyHours: Number(e.target.value) })} /></F>
+                <F label="Costo interno €/h"><Input type="number" defaultValue={member.internalRate} onBlur={(e) => patch({ internalRate: Number(e.target.value) })} /></F>
+                <F label="Tariffa cliente €/h"><Input type="number" defaultValue={member.clientRate} onBlur={(e) => patch({ clientRate: Number(e.target.value) })} /></F>
                 <F label="Job title"><Input defaultValue={member.jobTitle} onBlur={(e) => patch({ jobTitle: e.target.value })} /></F>
+                <F label="Collaborazione">
+                  <Select value={member.collaborationType} onChange={(e) => patch({ collaborationType: e.target.value as Member['collaborationType'] })}>
+                    {Object.entries(COLLAB_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </Select>
+                </F>
               </div>
+              <F label="Skill (separate da virgola)">
+                <Input defaultValue={(member.skills ?? []).join(', ')} onBlur={(e) => patch({ skills: e.target.value.split(',').map((skill) => skill.trim()).filter(Boolean) })} />
+              </F>
 
               <F label="Assegna a progetto">
                 <div className="flex gap-2">
@@ -164,6 +196,17 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
     </div>
   );
 }
+function InfoTile({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2">
+      <span className="text-fg-faint">{icon}</span>
+      <div>
+        <p className="text-2xs text-fg-subtle">{label}</p>
+        <p className="text-sm font-semibold">{value}</p>
+      </div>
+    </div>
+  );
+}
 function F({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block space-y-1"><span className="text-xs font-medium text-fg-subtle">{label}</span>{children}</label>;
 }
@@ -171,3 +214,13 @@ function StatusChip({ status }: { status: string }) {
   const map: Record<string, string> = { active: 'Attivo', suspended: 'Sospeso', unavailable: 'Non disp.', inactive: 'Inattivo' };
   return <Badge tone={status === 'active' ? 'success' : status === 'suspended' ? 'danger' : 'neutral'}>{map[status] ?? status}</Badge>;
 }
+
+const COLLAB_LABELS: Record<Member['collaborationType'], string> = {
+  founder: 'Founder',
+  employee: 'Dipendente',
+  freelance: 'Freelance',
+  occasional: 'Occasionale',
+  intern: 'Stage',
+  consultant: 'Consulente',
+  partner: 'Partner',
+};

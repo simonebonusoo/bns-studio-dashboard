@@ -20,8 +20,12 @@ export interface FileUploadInput {
   folder?: string;
   projectId?: string | null;
   clientId?: string | null;
+  entityType?: FileItem['entityType'];
+  entityId?: string | null;
+  documentCategory?: FileItem['documentCategory'];
   clientVisible?: boolean;
   tags?: string[];
+  metadata?: Record<string, unknown>;
 }
 
 /** Estensione/percorso sicuro: niente path traversal, niente caratteri strani. */
@@ -59,9 +63,13 @@ export const fileService = {
       folder: input.folder,
       projectId: input.projectId ?? null,
       clientId: input.clientId ?? null,
+      entityType: input.entityType ?? 'generic',
+      entityId: input.entityId ?? null,
+      documentCategory: input.documentCategory ?? 'Altro',
       clientVisible: input.clientVisible ?? false,
       uploadedBy: getActiveSession().memberId ?? undefined,
       tags: input.tags ?? [],
+      metadata: input.metadata ?? {},
     };
 
     if (IS_DEMO) {

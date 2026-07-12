@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { clientSchema, type ClientForm } from '@/schemas';
@@ -47,6 +48,29 @@ export function ClientFormModal({
       : { type: 'company', status: 'lead', priority: 'medium' },
   });
 
+  useEffect(() => {
+    if (!open) return;
+    reset(
+      client
+        ? {
+            type: client.type,
+            displayName: client.displayName,
+            companyName: client.companyName,
+            email: client.email ?? '',
+            phone: client.phone,
+            website: client.website,
+            vat: client.vat,
+            city: client.city,
+            sector: client.sector,
+            source: client.source,
+            status: client.status,
+            priority: client.priority,
+            notes: client.notes,
+          }
+        : { type: 'company', status: 'lead', priority: 'medium' },
+    );
+  }, [client, open, reset]);
+
   const onSubmit = async (values: ClientForm) => {
     try {
       if (editing && client) {
@@ -56,10 +80,9 @@ export function ClientFormModal({
         await create.mutateAsync({ ...values, tags: [] });
         toast.success('Cliente creato');
       }
-      reset();
       onClose();
-    } catch {
-      toast.error('Errore nel salvataggio');
+    } catch (error) {
+      console.error('[BnsStudio] Salvataggio cliente fallito', error);
     }
   };
 
@@ -72,7 +95,7 @@ export function ClientFormModal({
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Annulla</Button>
-          <Button onClick={handleSubmit(onSubmit)} loading={isSubmitting}>
+          <Button onClick={handleSubmit(onSubmit)} loading={isSubmitting || create.isPending || update.isPending}>
             {editing ? 'Salva' : 'Crea cliente'}
           </Button>
         </>

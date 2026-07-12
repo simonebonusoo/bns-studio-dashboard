@@ -1,3 +1,5 @@
+import { saveTextFile } from '@/services/downloadService';
+
 /** Utility di import/export CSV (§52). */
 
 function escapeCell(value: unknown): string {
@@ -10,7 +12,7 @@ function escapeCell(value: unknown): string {
 /** Esporta un array di oggetti come CSV e avvia il download. */
 export function exportToCSV<T extends object>(filename: string, rows: T[]): void {
   if (rows.length === 0) {
-    triggerDownload(`${filename}.csv`, '');
+    void triggerDownload(`${filename}.csv`, '');
     return;
   }
   const cols = Object.keys(rows[0]).filter((k) => !['organizationId'].includes(k));
@@ -18,7 +20,7 @@ export function exportToCSV<T extends object>(filename: string, rows: T[]): void
   const body = rows
     .map((r) => cols.map((c) => escapeCell((r as Record<string, unknown>)[c])).join(';'))
     .join('\n');
-  triggerDownload(`${filename}.csv`, `${header}\n${body}`);
+  void triggerDownload(`${filename}.csv`, `${header}\n${body}`);
 }
 
 export interface CSVParseResult {
@@ -70,13 +72,7 @@ function splitLine(line: string, delimiter: string): string[] {
   return out;
 }
 
-function triggerDownload(filename: string, content: string): void {
+async function triggerDownload(filename: string, content: string): Promise<void> {
   const BOM = String.fromCharCode(0xfeff); // Excel legge correttamente l'UTF-8
-  const blob = new Blob([`${BOM}${content}`], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  await saveTextFile(filename, `${BOM}${content}`, 'text/csv;charset=utf-8;');
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Printer, Plus, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Printer, Plus, Pencil, Trash2, Download, Share2 } from 'lucide-react';
 import { useDetail, useList, useCreate, useUpdate, useRemove } from '@/hooks/useEntities';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
@@ -14,6 +14,7 @@ import { formatCurrency, formatDate } from '@/lib/format';
 import { getInvoiceDeleteSafety, hasBlockingDependencies } from '@/services/deleteSafety';
 import { useAuth } from '@/stores/auth';
 import { InvoiceFormModal } from './InvoiceFormModal';
+import { downloadPdf, invoicePdfBlob, sharePdf } from '@/services/documentService';
 import type { Invoice, Client, Payment } from '@/types';
 import { toast } from 'sonner';
 
@@ -77,6 +78,13 @@ export default function InvoiceDetailPage() {
     navigate('/invoices');
   };
 
+  const downloadInvoicePdf = async () => {
+    await downloadPdf(`fattura-${invoice.number}.pdf`, invoicePdfBlob(invoice, client));
+  };
+  const shareInvoicePdf = async () => {
+    await sharePdf(`Fattura ${invoice.number}`, `fattura-${invoice.number}.pdf`, invoicePdfBlob(invoice, client));
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
@@ -86,6 +94,8 @@ export default function InvoiceDetailPage() {
         <div className="flex items-center gap-2">
           <StatusBadge status={invoice.status} />
           <Button variant="secondary" onClick={() => window.print()}><Printer className="h-4 w-4" /> Stampa / PDF</Button>
+          <Button variant="secondary" onClick={downloadInvoicePdf}><Download className="h-4 w-4" /> PDF</Button>
+          <Button variant="secondary" onClick={shareInvoicePdf}><Share2 className="h-4 w-4" /> Share</Button>
           {can('invoices.manage') && (
             <Button variant="secondary" onClick={() => setEditOpen(true)}>
               <Pencil className="h-4 w-4" /> Modifica

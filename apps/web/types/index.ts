@@ -12,6 +12,12 @@ import type {
   InvoiceStatus,
   PaymentMethod,
   PaymentStatus,
+  InstallmentStatus,
+  DocumentCategory,
+  DocumentSourceType,
+  RecurrenceFrequency,
+  ContractRecurrence,
+  RenewalType,
   TransactionType,
   PriceUnit,
   CalendarEventType,
@@ -271,6 +277,16 @@ export interface Payment extends BaseEntity {
   notes?: string;
 }
 
+export interface PaymentInstallment extends BaseEntity {
+  paymentId: string;
+  installmentNumber: number;
+  amount: number;
+  dueDate: string;
+  paidAt?: string | null;
+  status: InstallmentStatus;
+  notes?: string | null;
+}
+
 export interface Transaction extends BaseEntity {
   type: TransactionType;
   category: string;
@@ -312,6 +328,9 @@ export interface Contract extends BaseEntity {
   value: number;
   startDate?: string | null;
   endDate?: string | null;
+  recurrence?: ContractRecurrence;
+  billingFrequency?: ContractRecurrence;
+  renewalType?: RenewalType;
   paymentTerms?: string;
   includedRevisions?: number;
   terms?: string;
@@ -330,12 +349,16 @@ export interface FileItem extends BaseEntity {
   projectId?: string | null;
   clientId?: string | null;
   taskId?: string | null;
+  entityType?: DocumentSourceType | null;
+  entityId?: string | null;
+  documentCategory?: DocumentCategory;
   folder?: string;
   clientVisible: boolean;
   uploadedBy?: string;
   /** In demo: URL esterno o data-uri. In produzione: path Storage. */
   url?: string;
   tags: string[];
+  metadata?: Record<string, unknown>;
 }
 
 export interface CalendarEvent extends BaseEntity {
@@ -352,6 +375,10 @@ export interface CalendarEvent extends BaseEntity {
   description?: string;
   reminderMinutes?: number;
   visibility?: 'internal' | 'team' | 'client';
+  recurrence?: RecurrenceFrequency;
+  recurrenceUntil?: string | null;
+  invitedEmails?: string[];
+  notes?: string;
 }
 
 export interface Comment extends BaseEntity {
@@ -400,6 +427,12 @@ export interface DocItem extends BaseEntity {
   content: string; // HTML/markdown semplice
   projectId?: string | null;
   clientId?: string | null;
+  sourceEntityType?: DocumentSourceType | null;
+  sourceEntityId?: string | null;
+  representation?: 'markdown' | 'pdf' | 'html';
+  version?: number;
+  fileId?: string | null;
+  metadata?: Record<string, unknown>;
   tags: string[];
   authorId?: string;
 }

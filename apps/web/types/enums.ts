@@ -181,6 +181,13 @@ export type PaymentStatus =
   | 'partially_refunded'
   | 'cancelled';
 
+export type InstallmentStatus = 'scheduled' | 'due_soon' | 'paid' | 'overdue' | 'cancelled';
+export type DocumentCategory = 'Contratti' | 'Preventivi' | 'Fatture' | 'Documenti' | 'Asset' | 'Altro';
+export type DocumentSourceType = 'contract' | 'estimate' | 'invoice' | 'project' | 'generic';
+export type RecurrenceFrequency = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+export type ContractRecurrence = 'one_time' | 'monthly' | 'quarterly' | 'semiannual' | 'annual' | 'custom';
+export type RenewalType = 'none' | 'manual' | 'automatic';
+
 export type TransactionType = 'income' | 'expense';
 
 export type PriceUnit = 'fixed' | 'hourly' | 'daily' | 'monthly' | 'quantity' | 'custom';
@@ -189,6 +196,10 @@ export type CalendarEventType =
   | 'task'
   | 'milestone'
   | 'project_deadline'
+  | 'deadline'
+  | 'work'
+  | 'administration'
+  | 'personal'
   | 'lead_followup'
   | 'client_call'
   | 'meeting'

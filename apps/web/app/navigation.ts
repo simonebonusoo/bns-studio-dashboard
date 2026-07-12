@@ -54,7 +54,7 @@ export const NAV: NavGroup[] = [
     label: 'Team',
     items: [
       { label: 'Membri', to: '/team', icon: UsersRound, permission: 'team.read' },
-      { label: 'Workload', to: '/workload', icon: Gauge, permission: 'team.read' },
+      { label: 'Hub', to: '/hub', icon: Gauge, permission: 'team.read' },
     ],
   },
   {

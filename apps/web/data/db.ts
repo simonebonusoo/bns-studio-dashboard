@@ -13,6 +13,7 @@ import type {
   Estimate,
   Invoice,
   Payment,
+  PaymentInstallment,
   Transaction,
   Contract,
   FileItem,
@@ -52,6 +53,7 @@ export class BnsDatabase extends Dexie {
   estimates!: Table<Estimate, string>;
   invoices!: Table<Invoice, string>;
   payments!: Table<Payment, string>;
+  paymentInstallments!: Table<PaymentInstallment, string>;
   transactions!: Table<Transaction, string>;
   contracts!: Table<Contract, string>;
   files!: Table<FileItem, string>;
@@ -65,7 +67,7 @@ export class BnsDatabase extends Dexie {
 
   constructor() {
     super('bns-studio-os');
-    this.version(3).stores({
+    this.version(4).stores({
       users: 'id, email, memberId, organizationId',
       organizations: 'id, slug',
       members: 'id, organizationId, email, role, status',
@@ -80,6 +82,7 @@ export class BnsDatabase extends Dexie {
       estimates: 'id, organizationId, clientId, opportunityId, status, number',
       invoices: 'id, organizationId, clientId, projectId, status, number',
       payments: 'id, organizationId, invoiceId, clientId, status, date',
+      paymentInstallments: 'id, organizationId, paymentId, status, dueDate, installmentNumber',
       transactions: 'id, organizationId, type, category, date, projectId',
       contracts: 'id, organizationId, clientId, projectId, status, number',
       files: 'id, organizationId, projectId, clientId, taskId',
