@@ -16,6 +16,7 @@ import { ConfirmDialog } from '@/components/ui/Modal';
 import { useList, useRemove, useUpdate } from '@/hooks/useEntities';
 import { EventFormModal, type EventDraft } from './EventFormModal';
 import { cn } from '@/lib/cn';
+import { expandEvents, isOccurrenceId, masterEventId } from '@/lib/recurrence';
 import { formatDate, formatDateTime } from '@/lib/format';
 import type { CalendarEvent, Client, Member, Milestone, Project } from '@/types';
 import { toast } from 'sonner';
@@ -59,6 +60,8 @@ interface CalItem {
   kind: 'event' | 'milestone';
   time?: string;
   link?: string;
+  /** true se è un'occorrenza derivata di una serie ricorrente (non il master). */
+  occurrence?: boolean;
 }
 
 export default function CalendarPage() {
@@ -87,21 +90,43 @@ export default function CalendarPage() {
     setParams(next, { replace: true });
   }, [params, setParams]);
 
+  // Intervallo visibile per la vista corrente: le ricorrenze vengono espanse
+  // solo dentro questo range (§21), senza materializzarle a DB.
+  const [rangeStart, rangeEnd] = useMemo((): [Date, Date] => {
+    if (view === 'month') {
+      return [startOfWeek(startOfMonth(cursor), { weekStartsOn: 1 }), endOfWeek(endOfMonth(cursor), { weekStartsOn: 1 })];
+    }
+    if (view === 'week') {
+      return [startOfWeek(cursor, { weekStartsOn: 1 }), endOfWeek(cursor, { weekStartsOn: 1 })];
+    }
+    if (view === 'day') {
+      const s = new Date(cursor); s.setHours(0, 0, 0, 0);
+      const e = new Date(cursor); e.setHours(23, 59, 59, 999);
+      return [s, e];
+    }
+    // agenda: prossimi 90 giorni
+    const s = new Date(); s.setHours(0, 0, 0, 0);
+    const e = addDays(s, 90); e.setHours(23, 59, 59, 999);
+    return [s, e];
+  }, [view, cursor]);
+
   const items: CalItem[] = useMemo(() => {
-    const evs: CalItem[] = (events ?? []).map((e) => ({
+    const evs: CalItem[] = expandEvents(events ?? [], rangeStart, rangeEnd).map((e) => ({
       id: e.id, title: e.title, start: e.start, end: e.end, allDay: e.allDay,
       color: TYPE_COLORS[e.type] ?? '#71717a', kind: 'event', time: format(parseISO(e.start), 'HH:mm'),
+      occurrence: isOccurrenceId(e.id),
     }));
     const ms: CalItem[] = (milestones ?? []).filter((m) => m.dueDate && m.status !== 'completed').map((m) => ({
       id: `ms-${m.id}`, title: m.title, start: m.dueDate!, end: m.dueDate!, allDay: true, color: '#b0d62e', kind: 'milestone', link: `/projects/${m.projectId}`,
     }));
     return [...evs, ...ms];
-  }, [events, milestones]);
+  }, [events, milestones, rangeStart, rangeEnd]);
 
   const itemsOn = (day: Date) => items.filter((i) => isSameDay(parseISO(i.start), day)).sort((a, b) => a.start < b.start ? -1 : 1);
 
   const openItem = (item: CalItem) => {
-    if (item.kind === 'event') setSelectedEventId(item.id);
+    // Le occorrenze derivate aprono il dettaglio dell'evento master della serie.
+    if (item.kind === 'event') setSelectedEventId(masterEventId(item.id));
     else if (item.link) navigate(item.link);
   };
 
@@ -225,10 +250,10 @@ function MonthView({ cursor, itemsOn, onCreate, onOpen, onDropDay, setDragId }: 
                 {dayItems.slice(0, 3).map((i) => (
                   <div
                     key={i.id}
-                    draggable={i.kind === 'event'}
-                    onDragStart={() => i.kind === 'event' && setDragId(i.id)}
+                    draggable={i.kind === 'event' && !i.occurrence}
+                    onDragStart={() => i.kind === 'event' && !i.occurrence && setDragId(i.id)}
                     onClick={(e) => { e.stopPropagation(); onOpen(i); }}
-                    className={cn('flex items-center gap-1 truncate rounded px-1 py-0.5 text-2xs transition-opacity hover:opacity-80', i.kind === 'event' ? 'cursor-grab' : 'cursor-pointer border-l-2')}
+                    className={cn('flex items-center gap-1 truncate rounded px-1 py-0.5 text-2xs transition-opacity hover:opacity-80', i.kind === 'event' && !i.occurrence ? 'cursor-grab' : 'cursor-pointer', i.kind === 'milestone' && 'border-l-2')}
                     style={i.kind === 'event' ? { backgroundColor: `${i.color}22`, color: 'rgb(var(--fg))' } : { borderColor: i.color }}
                   >
                     {i.kind === 'milestone' && <Flag className="h-2.5 w-2.5 shrink-0" style={{ color: i.color }} />}
