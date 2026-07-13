@@ -1,16 +1,21 @@
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/cn';
 
 export function Avatar({
   name,
   color,
+  src,
   size = 'md',
   className,
 }: {
   name: string;
   color?: string;
+  src?: string | null;
   size?: 'xs' | 'sm' | 'md' | 'lg';
   className?: string;
 }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
   const parts = name.trim().split(' ');
   const initials = ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
   const sizes = {
@@ -19,6 +24,17 @@ export function Avatar({
     md: 'h-9 w-9 text-sm',
     lg: 'h-11 w-11 text-base',
   };
+  if (src && !failed) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        className={cn('shrink-0 rounded-full object-cover', sizes[size], className)}
+        title={name}
+        onError={() => setFailed(true)}
+      />
+    );
+  }
   return (
     <span
       className={cn(

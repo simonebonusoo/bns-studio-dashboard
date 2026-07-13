@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Printer, Check, X, FileOutput, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Printer, Check, X, FileOutput, Pencil, Trash2, Download, Share2, FileText } from 'lucide-react';
 import { useDetail, useList, useUpdate, useCreate, useRemove } from '@/hooks/useEntities';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
 import { LoadingState, ErrorState } from '@/components/ui/States';
-import { ConfirmDialog } from '@/components/ui/Modal';
+import { ConfirmDialog, Modal } from '@/components/ui/Modal';
 import { DocumentView } from '@/features/finance/DocumentView';
 import { formatDate } from '@/lib/format';
 import { nextInvoiceNumber } from '@/services/documentNumbers';
 import { getEstimateDeleteSafety, hasBlockingDependencies } from '@/services/deleteSafety';
+import { downloadMarkdown, downloadPdf, estimateMarkdown, estimatePdfBlob, sharePdf, upsertMarkdownDocument } from '@/services/documentService';
 import { useAuth } from '@/stores/auth';
 import { EstimateFormModal } from './EstimateFormModal';
 import type { Estimate, Client, Invoice, Contract } from '@/types';
@@ -28,6 +29,7 @@ export default function EstimateDetailPage() {
   const remove = useRemove('estimates');
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [markdownOpen, setMarkdownOpen] = useState(false);
 
   if (isLoading) return <LoadingState />;
   if (!estimate) return <ErrorState message="Preventivo non trovato" />;
@@ -36,6 +38,7 @@ export default function EstimateDetailPage() {
   const canManage = can('estimates.manage');
   const deleteSafety = getEstimateDeleteSafety(estimate, contracts ?? [], invoices ?? []);
   const blockedDelete = hasBlockingDependencies(deleteSafety);
+  const linkedInvoices = (invoices ?? []).filter((invoice) => invoice.estimateId === estimate.id);
 
   const setStatus = async (status: Estimate['status']) => {
     await update.mutateAsync({
@@ -53,7 +56,7 @@ export default function EstimateDetailPage() {
   };
 
   const convertToInvoice = async () => {
-    await createInvoice.mutateAsync({
+    const createdInvoice = await createInvoice.mutateAsync({
       number: await nextInvoiceNumber(),
       clientId: estimate.clientId,
       estimateId: estimate.id,
@@ -67,6 +70,32 @@ export default function EstimateDetailPage() {
       paymentMethod: 'bank_transfer',
     });
     toast.success('Fattura creata dal preventivo');
+    navigate(`/invoices/${createdInvoice.id}`);
+  };
+
+  const markdown = estimateMarkdown(estimate, client);
+  const ensureMarkdown = () =>
+    upsertMarkdownDocument({
+      title: `Preventivo ${estimate.number}`,
+      type: 'estimate',
+      markdown,
+      sourceEntityType: 'estimate',
+      sourceEntityId: estimate.id,
+      clientId: estimate.clientId,
+    });
+  const downloadEstimatePdf = async () => {
+    await downloadPdf(`preventivo-${estimate.number}.pdf`, estimatePdfBlob(estimate, client));
+  };
+  const shareEstimatePdf = async () => {
+    await sharePdf(`Preventivo ${estimate.number}`, `preventivo-${estimate.number}.pdf`, estimatePdfBlob(estimate, client));
+  };
+  const openMarkdown = async () => {
+    await ensureMarkdown();
+    setMarkdownOpen(true);
+  };
+  const downloadEstimateMarkdown = async () => {
+    await ensureMarkdown();
+    await downloadMarkdown(`preventivo-${estimate.number}.md`, markdown);
   };
 
   return (
@@ -78,6 +107,9 @@ export default function EstimateDetailPage() {
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={estimate.status} />
           <Button variant="secondary" onClick={() => window.print()}><Printer className="h-4 w-4" /> Stampa / PDF</Button>
+          <Button variant="secondary" onClick={downloadEstimatePdf}><Download className="h-4 w-4" /> PDF</Button>
+          <Button variant="secondary" onClick={shareEstimatePdf}><Share2 className="h-4 w-4" /> Share</Button>
+          <Button variant="ghost" onClick={openMarkdown}><FileText className="h-4 w-4" /> Markdown</Button>
           {canManage && (
             <Button variant="secondary" onClick={() => setEditOpen(true)}>
               <Pencil className="h-4 w-4" /> Modifica
@@ -89,8 +121,14 @@ export default function EstimateDetailPage() {
               <Button variant="ghost" onClick={() => setStatus('rejected')}><X className="h-4 w-4 text-danger" /></Button>
             </>
           )}
-          {canManage && estimate.status === 'accepted' && (
-            <Button onClick={convertToInvoice}><FileOutput className="h-4 w-4" /> Crea fattura</Button>
+          {canManage && estimate.status === 'accepted' && linkedInvoices.length === 0 && (
+            <Button onClick={convertToInvoice} loading={createInvoice.isPending}><FileOutput className="h-4 w-4" /> Crea fattura</Button>
+          )}
+          {linkedInvoices.length === 1 && (
+            <Button onClick={() => navigate(`/invoices/${linkedInvoices[0].id}`)}><FileOutput className="h-4 w-4" /> Visualizza fattura</Button>
+          )}
+          {linkedInvoices.length > 1 && (
+            <Button onClick={() => navigate(`/invoices?estimateId=${estimate.id}`)}><FileOutput className="h-4 w-4" /> Visualizza fatture</Button>
           )}
           {canManage && (
             <Button variant="ghost" onClick={() => setDeleteOpen(true)}>
@@ -113,6 +151,22 @@ export default function EstimateDetailPage() {
       />
 
       <EstimateFormModal open={editOpen} onClose={() => setEditOpen(false)} estimate={estimate} />
+      <Modal
+        open={markdownOpen}
+        onClose={() => setMarkdownOpen(false)}
+        title={`Markdown ${estimate.number}`}
+        size="xl"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setMarkdownOpen(false)}>Chiudi</Button>
+            <Button onClick={downloadEstimateMarkdown}><Download className="h-4 w-4" /> Scarica .md</Button>
+          </>
+        }
+      >
+        <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-lg bg-surface-2 p-4 text-xs leading-relaxed text-fg-subtle">
+          {markdown}
+        </pre>
+      </Modal>
       <ConfirmDialog
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}

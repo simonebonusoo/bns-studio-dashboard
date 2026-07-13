@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Download, ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Download, ExternalLink, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { MetricCard } from '@/components/ui/Card';
@@ -15,6 +15,7 @@ import { formatCurrency, formatDate } from '@/lib/format';
 import { getInvoiceDeleteSafety, hasBlockingDependencies } from '@/services/deleteSafety';
 import { exportToCSV } from '@/utils/csv';
 import { useAuth } from '@/stores/auth';
+import { InvoiceFormModal } from './InvoiceFormModal';
 import type { Invoice, Client, Payment } from '@/types';
 import { toast } from 'sonner';
 
@@ -23,10 +24,24 @@ export default function InvoicesPage() {
   const { data: clients } = useList<Client>('clients');
   const { data: payments } = useList<Payment>('payments');
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
   const can = useAuth((state) => state.can);
   const remove = useRemove('invoices');
   const [deleteTarget, setDeleteTarget] = useState<Invoice | null>(null);
-  const list = invoices ?? [];
+  const [editing, setEditing] = useState<Invoice | null>(null);
+  const projectFilter = params.get('projectId') || null;
+  const clientFilter = params.get('clientId') || null;
+  const estimateFilter = params.get('estimateId') || null;
+  const open = params.get('new') === '1' || Boolean(editing);
+  const list = useMemo(() => {
+    const items = invoices ?? [];
+    return items.filter((invoice) => {
+      const matchesProject = !projectFilter || invoice.projectId === projectFilter;
+      const matchesClient = !clientFilter || invoice.clientId === clientFilter;
+      const matchesEstimate = !estimateFilter || invoice.estimateId === estimateFilter;
+      return matchesProject && matchesClient && matchesEstimate;
+    });
+  }, [clientFilter, estimateFilter, invoices, projectFilter]);
 
   const clientName = (id?: string) => (clients ?? []).find((c) => c.id === id)?.displayName ?? '—';
   const bal = (inv: Invoice) => invoiceBalance(inv, payments ?? []);
@@ -59,7 +74,7 @@ export default function InvoicesPage() {
               { label: 'Apri dettaglio', icon: ExternalLink, onClick: () => navigate(`/invoices/${invoice.id}`) },
               ...(can('invoices.manage')
                 ? [
-                    { label: 'Modifica', icon: Pencil, onClick: () => navigate(`/invoices/${invoice.id}`) },
+                    { label: 'Modifica', icon: Pencil, onClick: () => setEditing(invoice) },
                     {
                       label: 'Elimina',
                       icon: Trash2,
@@ -83,6 +98,28 @@ export default function InvoicesPage() {
     setDeleteTarget(null);
   };
 
+  const openCreate = () => {
+    const next = new URLSearchParams(params);
+    next.set('new', '1');
+    setParams(next, { replace: true });
+  };
+
+  const closeModal = () => {
+    setEditing(null);
+    if (params.get('new') !== '1') return;
+    const next = new URLSearchParams(params);
+    next.delete('new');
+    setParams(next, { replace: true });
+  };
+
+  const clearFilters = () => {
+    const next = new URLSearchParams(params);
+    next.delete('projectId');
+    next.delete('clientId');
+    next.delete('estimateId');
+    setParams(next, { replace: true });
+  };
+
   if (isLoading) return <LoadingState />;
 
   return (
@@ -90,8 +127,27 @@ export default function InvoicesPage() {
       <PageHeader
         title="Fatture"
         description={`${list.length} fatture · modulo gestionale (non sostituisce la fatturazione elettronica certificata)`}
-        actions={<Button variant="secondary" onClick={() => exportToCSV('fatture', list.map((i) => ({ numero: i.number, cliente: clientName(i.clientId), totale: bal(i).total, saldo: bal(i).balance, stato: i.status })))}><Download className="h-4 w-4" /> Esporta CSV</Button>}
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => exportToCSV('fatture', list.map((i) => ({ numero: i.number, cliente: clientName(i.clientId), totale: bal(i).total, saldo: bal(i).balance, stato: i.status })))}><Download className="h-4 w-4" /> Esporta CSV</Button>
+            {can('invoices.manage') && <Button onClick={openCreate}><Plus className="h-4 w-4" /> Nuova fattura</Button>}
+          </>
+        }
       />
+      {(projectFilter || clientFilter || estimateFilter) && (
+        <div className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3 text-sm">
+          <div className="text-fg-subtle">
+            {projectFilter
+              ? 'Stai visualizzando le fatture collegate al progetto selezionato.'
+              : estimateFilter
+                ? 'Stai visualizzando le fatture collegate al preventivo selezionato.'
+                : 'Stai visualizzando le fatture filtrate per cliente.'}
+          </div>
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
+            <X className="h-4 w-4" /> Rimuovi filtro
+          </Button>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MetricCard label="Emesso" value={formatCurrency(totalIssued)} />
         <MetricCard label="Incassato" value={formatCurrency(totalPaid)} />
@@ -99,6 +155,15 @@ export default function InvoicesPage() {
         <MetricCard label="Scadute" value={overdue} accent={overdue > 0} />
       </div>
       <DataTable data={list} columns={columns} onRowClick={(i) => navigate(`/invoices/${i.id}`)} />
+      <InvoiceFormModal
+        open={open}
+        onClose={closeModal}
+        invoice={editing}
+        defaults={{ projectId: projectFilter ?? undefined, clientId: clientFilter ?? undefined }}
+        onSaved={(invoice, mode) => {
+          if (mode === 'create') navigate(`/invoices/${invoice.id}`);
+        }}
+      />
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}

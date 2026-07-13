@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input, Select, Field, Textarea } from '@/components/ui/Input';
-import { useList, useUpdate } from '@/hooks/useEntities';
+import { useCreate, useList, useUpdate } from '@/hooks/useEntities';
 import { documentTotals } from '@/lib/finance';
 import { formatCurrency } from '@/lib/format';
-import type { Client, DocumentLineItem, Invoice, PaymentMethod, Service } from '@/types';
+import { uid } from '@/lib/id';
+import { nextInvoiceNumber } from '@/services/documentNumbers';
+import type { Client, DocumentLineItem, Invoice, PaymentMethod, Project, Service } from '@/types';
 import { toast } from 'sonner';
 
 const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
@@ -19,84 +21,149 @@ const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   other: 'Altro',
 };
 
+function blankItem(): DocumentLineItem {
+  return {
+    id: uid(),
+    description: '',
+    quantity: 1,
+    unit: 'fixed',
+    unitPrice: 0,
+    discountPct: 0,
+    vatRate: 22,
+  };
+}
+
+function buildInitialState(invoice?: Invoice | null, defaults?: { clientId?: string; projectId?: string }) {
+  return {
+    clientId: invoice?.clientId ?? defaults?.clientId ?? '',
+    projectId: invoice?.projectId ?? defaults?.projectId ?? '',
+    status: invoice?.status ?? ('draft' as Invoice['status']),
+    issueDate: invoice?.issueDate.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+    dueDate: invoice?.dueDate?.slice(0, 10) ?? '',
+    paymentMethod: invoice?.paymentMethod ?? ('bank_transfer' as PaymentMethod),
+    notes: invoice?.notes ?? '',
+    items: invoice?.items?.length ? invoice.items : [blankItem()],
+  };
+}
+
 export function InvoiceFormModal({
   open,
   onClose,
   invoice,
+  defaults,
+  onSaved,
 }: {
   open: boolean;
   onClose: () => void;
-  invoice: Invoice;
+  invoice?: Invoice | null;
+  defaults?: { clientId?: string; projectId?: string };
+  onSaved?: (invoice: Invoice, mode: 'create' | 'update') => void;
 }) {
+  const create = useCreate<Invoice>('invoices');
   const update = useUpdate<Invoice>('invoices');
   const { data: clients } = useList<Client>('clients');
+  const { data: projects } = useList<Project>('projects');
   const { data: services } = useList<Service>('services');
-  const [clientId, setClientId] = useState(invoice.clientId ?? '');
-  const [status, setStatus] = useState<Invoice['status']>(invoice.status);
-  const [issueDate, setIssueDate] = useState(invoice.issueDate.slice(0, 10));
-  const [dueDate, setDueDate] = useState(invoice.dueDate?.slice(0, 10) ?? '');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(invoice.paymentMethod ?? 'bank_transfer');
-  const [notes, setNotes] = useState(invoice.notes ?? '');
-  const [items, setItems] = useState<DocumentLineItem[]>(invoice.items);
+  const editing = Boolean(invoice);
+  const initialState = useMemo(
+    () => buildInitialState(invoice, defaults),
+    [defaults, invoice],
+  );
+  const [form, setForm] = useState(initialState);
 
   useEffect(() => {
     if (!open) return;
-    setClientId(invoice.clientId ?? '');
-    setStatus(invoice.status);
-    setIssueDate(invoice.issueDate.slice(0, 10));
-    setDueDate(invoice.dueDate?.slice(0, 10) ?? '');
-    setPaymentMethod(invoice.paymentMethod ?? 'bank_transfer');
-    setNotes(invoice.notes ?? '');
-    setItems(invoice.items);
-  }, [invoice, open]);
+    setForm(initialState);
+  }, [initialState, open]);
+
+  const setField = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
+    setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleProjectChange = (projectId: string) => {
+    const project = (projects ?? []).find((item) => item.id === projectId);
+    setForm((current) => ({
+      ...current,
+      projectId,
+      clientId: project?.clientId ?? current.clientId,
+    }));
+  };
 
   const addService = (id: string) => {
     const service = (services ?? []).find((item) => item.id === id);
     if (!service) return;
-    setItems((current) => [
+    setForm((current) => ({
       ...current,
-      {
-        id: crypto.randomUUID(),
-        serviceId: service.id,
-        description: service.name,
-        quantity: 1,
-        unit: service.priceUnit,
-        unitPrice: service.basePrice,
-        discountPct: 0,
-        vatRate: service.vatRate,
-      },
-    ]);
+      items: [
+        ...current.items,
+        {
+          id: uid(),
+          serviceId: service.id,
+          description: service.name,
+          quantity: 1,
+          unit: service.priceUnit,
+          unitPrice: service.basePrice,
+          discountPct: 0,
+          vatRate: service.vatRate,
+        },
+      ],
+    }));
   };
 
   const updateItem = (id: string, patch: Partial<DocumentLineItem>) => {
-    setItems((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+    setForm((current) => ({
+      ...current,
+      items: current.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+    }));
   };
 
   const removeItem = (id: string) => {
-    setItems((current) => current.filter((item) => item.id !== id));
+    setForm((current) => ({ ...current, items: current.items.filter((item) => item.id !== id) }));
   };
 
-  const totals = documentTotals(items);
+  const totals = documentTotals(form.items);
 
   const submit = async () => {
-    if (items.length === 0) {
-      toast.error('Aggiungi almeno una voce');
+    const normalizedItems = form.items
+      .map((item) => ({ ...item, description: item.description.trim() }))
+      .filter((item) => item.description.length > 0);
+
+    if (normalizedItems.length === 0) {
+      toast.error('Aggiungi almeno una voce valida');
       return;
     }
 
-    await update.mutateAsync({
-      id: invoice.id,
-      patch: {
-        clientId: clientId || undefined,
-        status,
-        issueDate,
-        dueDate: dueDate || null,
-        items,
-        paymentMethod,
-        notes: notes || undefined,
-      },
+    const payload = {
+      clientId: form.clientId || undefined,
+      projectId: form.projectId || undefined,
+      status: form.status,
+      currency: 'EUR',
+      issueDate: form.issueDate,
+      dueDate: form.dueDate || null,
+      items: normalizedItems,
+      globalDiscountPct: invoice?.globalDiscountPct ?? 0,
+      withholdingPct: invoice?.withholdingPct ?? 0,
+      paymentMethod: form.paymentMethod,
+      notes: form.notes || undefined,
+    };
+
+    if (editing && invoice) {
+      const updatedInvoice = await update.mutateAsync({
+        id: invoice.id,
+        patch: payload,
+      });
+      toast.success('Fattura aggiornata');
+      onSaved?.(updatedInvoice, 'update');
+      onClose();
+      return;
+    }
+
+    const createdInvoice = await create.mutateAsync({
+      number: await nextInvoiceNumber(),
+      ...payload,
     });
-    toast.success('Fattura aggiornata');
+    toast.success('Fattura creata');
+    onSaved?.(createdInvoice, 'create');
     onClose();
   };
 
@@ -104,19 +171,21 @@ export function InvoiceFormModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={`Modifica ${invoice.number}`}
+      title={editing ? `Modifica ${invoice?.number}` : 'Nuova fattura'}
       size="lg"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Annulla</Button>
-          <Button onClick={submit}>Salva</Button>
+          <Button onClick={submit} loading={create.isPending || update.isPending}>
+            {editing ? 'Salva' : 'Crea fattura'}
+          </Button>
         </>
       }
     >
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Cliente">
-            <Select value={clientId} onChange={(event) => setClientId(event.target.value)}>
+            <Select value={form.clientId} onChange={(event) => setField('clientId', event.target.value)}>
               <option value="">—</option>
               {(clients ?? []).map((client) => (
                 <option key={client.id} value={client.id}>
@@ -125,8 +194,18 @@ export function InvoiceFormModal({
               ))}
             </Select>
           </Field>
+          <Field label="Progetto">
+            <Select value={form.projectId} onChange={(event) => handleProjectChange(event.target.value)}>
+              <option value="">—</option>
+              {(projects ?? []).map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
           <Field label="Stato">
-            <Select value={status} onChange={(event) => setStatus(event.target.value as Invoice['status'])}>
+            <Select value={form.status} onChange={(event) => setField('status', event.target.value as Invoice['status'])}>
               <option value="draft">Bozza</option>
               <option value="issued">Emessa</option>
               <option value="sent">Inviata</option>
@@ -138,20 +217,20 @@ export function InvoiceFormModal({
               <option value="credited">Stornata</option>
             </Select>
           </Field>
-          <Field label="Data emissione">
-            <Input type="date" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} />
-          </Field>
-          <Field label="Scadenza">
-            <Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
-          </Field>
           <Field label="Metodo pagamento">
-            <Select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)}>
+            <Select value={form.paymentMethod} onChange={(event) => setField('paymentMethod', event.target.value as PaymentMethod)}>
               {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
               ))}
             </Select>
+          </Field>
+          <Field label="Data emissione">
+            <Input type="date" value={form.issueDate} onChange={(event) => setField('issueDate', event.target.value)} />
+          </Field>
+          <Field label="Scadenza">
+            <Input type="date" value={form.dueDate} onChange={(event) => setField('dueDate', event.target.value)} />
           </Field>
         </div>
 
@@ -168,9 +247,9 @@ export function InvoiceFormModal({
             </Select>
           </div>
           <div className="space-y-2">
-            {items.map((item) => (
+            {form.items.map((item) => (
               <div key={item.id} className="flex items-center gap-2 rounded-lg border border-border p-2">
-                <Input value={item.description} onChange={(event) => updateItem(item.id, { description: event.target.value })} className="h-8 flex-1" />
+                <Input value={item.description} onChange={(event) => updateItem(item.id, { description: event.target.value })} className="h-8 flex-1" placeholder="Descrizione voce" />
                 <Input type="number" value={item.quantity} onChange={(event) => updateItem(item.id, { quantity: Number(event.target.value) })} className="h-8 w-16" title="Quantità" />
                 <Input type="number" value={item.unitPrice} onChange={(event) => updateItem(item.id, { unitPrice: Number(event.target.value) })} className="h-8 w-24" title="Prezzo" />
                 <span className="w-24 text-right text-sm font-medium">{formatCurrency(item.quantity * item.unitPrice)}</span>
@@ -183,7 +262,7 @@ export function InvoiceFormModal({
         </div>
 
         <Field label="Note">
-          <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} />
+          <Textarea value={form.notes} onChange={(event) => setField('notes', event.target.value)} />
         </Field>
 
         <div className="flex justify-end border-t border-border pt-4">

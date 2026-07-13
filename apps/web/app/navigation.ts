@@ -3,7 +3,6 @@ import {
   Users,
   Briefcase,
   Calendar,
-  Clock,
   UsersRound,
   FileText,
   FileSignature,
@@ -13,7 +12,6 @@ import {
   BarChart3,
   FolderOpen,
   FileUp,
-  Settings,
   Package,
   Gauge,
   type LucideIcon,
@@ -47,14 +45,13 @@ export const NAV: NavGroup[] = [
     items: [
       { label: 'Progetti', to: '/projects', icon: Briefcase, permission: 'projects.read' },
       { label: 'Calendario', to: '/calendar', icon: Calendar },
-      { label: 'Time Tracking', to: '/time', icon: Clock, permission: 'time.log' },
     ],
   },
   {
     label: 'Team',
     items: [
       { label: 'Membri', to: '/team', icon: UsersRound, permission: 'team.read' },
-      { label: 'Workload', to: '/workload', icon: Gauge, permission: 'team.read' },
+      { label: 'Hub', to: '/hub', icon: Gauge, permission: 'team.read' },
     ],
   },
   {
@@ -73,12 +70,9 @@ export const NAV: NavGroup[] = [
   {
     label: 'Risorse',
     items: [
-      { label: 'File', to: '/files', icon: FolderOpen, permission: 'files.read' },
+      { label: 'Archivio', to: '/files', icon: FolderOpen, permission: 'files.read' },
       { label: 'Importa Markdown', to: '/import', icon: FileUp, permission: 'imports.manage' },
       { label: 'Servizi', to: '/services', icon: Package },
     ],
-  },
-  {
-    items: [{ label: 'Impostazioni', to: '/settings', icon: Settings }],
   },
 ];

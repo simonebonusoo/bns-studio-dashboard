@@ -8,13 +8,18 @@
     @apply border-border;
   }
   html {
+    height: 100%;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
   body {
     @apply bg-bg text-fg font-sans antialiased;
+    min-height: 100%;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
     letter-spacing: -0.006em;
+  }
+  #root {
+    min-height: 100%;
   }
   h1, h2, h3 {
     letter-spacing: -0.018em;
@@ -62,6 +67,14 @@
   /* Riga tabella / lista con hover coerente */
   .row-hover {
     @apply transition-colors hover:bg-surface-2;
+  }
+  .number-input-clean {
+    appearance: textfield;
+  }
+  .number-input-clean::-webkit-outer-spin-button,
+  .number-input-clean::-webkit-inner-spin-button {
+    appearance: none;
+    margin: 0;
   }
 }
 

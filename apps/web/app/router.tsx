@@ -14,7 +14,7 @@ const ProjectsPage = lazy(() => import('@/features/projects/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('@/features/projects/ProjectDetailPage'));
 const CalendarPage = lazy(() => import('@/features/calendar/CalendarPage'));
 const TeamPage = lazy(() => import('@/features/team/TeamPage'));
-const WorkloadPage = lazy(() => import('@/features/team/WorkloadPage'));
+const HubPage = lazy(() => import('@/features/team/WorkloadPage'));
 const TimePage = lazy(() => import('@/features/time-tracking/TimePage'));
 const EstimatesPage = lazy(() => import('@/features/estimates/EstimatesPage'));
 const EstimateDetailPage = lazy(() => import('@/features/estimates/EstimateDetailPage'));
@@ -29,6 +29,7 @@ const ImportPage = lazy(() => import('@/features/import/ImportPage'));
 const ServicesPage = lazy(() => import('@/features/services/ServicesPage'));
 const SettingsPage = lazy(() => import('@/features/settings/SettingsPage'));
 const NotificationsPage = lazy(() => import('@/features/notifications/NotificationsPage'));
+const ProfilePage = lazy(() => import('@/features/profile/ProfilePage'));
 const NotFoundPage = lazy(() => import('@/features/misc/NotFoundPage'));
 
 export const router = createBrowserRouter([
@@ -51,7 +52,8 @@ export const router = createBrowserRouter([
       { path: 'projects/:id', element: <ProjectDetailPage /> },
       { path: 'calendar', element: <CalendarPage /> },
       { path: 'team', element: <TeamPage /> },
-      { path: 'workload', element: <WorkloadPage /> },
+      { path: 'hub', element: <HubPage /> },
+      { path: 'workload', element: <HubPage /> },
       { path: 'time', element: <TimePage /> },
       { path: 'estimates', element: <EstimatesPage /> },
       { path: 'estimates/:id', element: <EstimateDetailPage /> },
@@ -66,6 +68,7 @@ export const router = createBrowserRouter([
       { path: 'services', element: <ServicesPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'notifications', element: <NotificationsPage /> },
+      { path: 'profile', element: <ProfilePage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

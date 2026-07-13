@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Plus, Download, Pencil, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Download, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { MetricCard } from '@/components/ui/Card';
@@ -25,6 +26,7 @@ export default function FinancePage() {
   const update = useUpdate<Transaction>('transactions');
   const remove = useRemove('transactions');
   const can = useAuth((s) => s.can);
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
@@ -41,6 +43,15 @@ export default function FinancePage() {
     { key: 'type', header: 'Tipo', render: (t) => <Badge tone={t.type === 'income' ? 'success' : 'danger'}>{t.type === 'income' ? 'Entrata' : 'Uscita'}</Badge> },
     { key: 'category', header: 'Categoria', render: (t) => t.category },
     { key: 'description', header: 'Descrizione', render: (t) => <span className="text-fg-subtle">{t.description}</span> },
+    {
+      key: 'source',
+      header: 'Origine',
+      render: (t) => (
+        <span className="text-xs text-fg-faint">
+          {t.automatic ? (t.sourceType === 'payment_installment' ? `Rata pagamento · ${t.sourceLabel ?? ''}` : 'Pagamento') : 'Manuale'}
+        </span>
+      ),
+    },
     { key: 'amount', header: 'Importo', sortValue: (t) => t.amount, render: (t) => <span className={t.type === 'income' ? 'font-semibold text-success' : 'font-semibold text-danger'}>{t.type === 'income' ? '+' : '−'} {formatCurrency(t.amount)}</span> },
     {
       key: 'actions',
@@ -49,7 +60,13 @@ export default function FinancePage() {
       render: (transaction) => (
         <div className="flex justify-end" onClick={(event) => event.stopPropagation()}>
           <ActionMenu
-            items={[
+            items={transaction.automatic ? [
+              {
+                label: 'Apri origine',
+                icon: ExternalLink,
+                onClick: () => navigate('/payments'),
+              },
+            ] : [
               {
                 label: 'Modifica',
                 icon: Pencil,
@@ -169,7 +186,8 @@ export default function FinancePage() {
                   amount: String(transaction.amount),
                   date: transaction.date,
                 });
-                setOpen(true);
+                if (transaction.automatic) navigate('/payments');
+                else setOpen(true);
               }
             : undefined
         }

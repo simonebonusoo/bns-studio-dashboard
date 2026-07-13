@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { clientSchema, type ClientForm } from '@/schemas';
@@ -7,6 +8,24 @@ import { Input, Select, Textarea, Field } from '@/components/ui/Input';
 import { useCreate, useUpdate } from '@/hooks/useEntities';
 import type { Client } from '@/types';
 import { toast } from 'sonner';
+
+function formValues(client: Client): ClientForm {
+  return {
+    type: client.type,
+    displayName: client.displayName,
+    companyName: client.companyName ?? '',
+    email: client.email ?? '',
+    phone: client.phone ?? '',
+    website: client.website ?? '',
+    vat: client.vat ?? '',
+    city: client.city ?? '',
+    sector: client.sector ?? '',
+    source: client.source ?? '',
+    status: client.status,
+    priority: client.priority,
+    notes: client.notes ?? '',
+  };
+}
 
 export function ClientFormModal({
   open,
@@ -20,6 +39,7 @@ export function ClientFormModal({
   const create = useCreate<Client>('clients');
   const update = useUpdate<Client>('clients');
   const editing = !!client;
+  const formId = 'client-form-modal';
 
   const {
     register,
@@ -28,24 +48,13 @@ export function ClientFormModal({
     formState: { errors, isSubmitting },
   } = useForm<ClientForm>({
     resolver: zodResolver(clientSchema),
-    defaultValues: client
-      ? {
-          type: client.type,
-          displayName: client.displayName,
-          companyName: client.companyName,
-          email: client.email ?? '',
-          phone: client.phone,
-          website: client.website,
-          vat: client.vat,
-          city: client.city,
-          sector: client.sector,
-          source: client.source,
-          status: client.status,
-          priority: client.priority,
-          notes: client.notes,
-        }
-      : { type: 'company', status: 'lead', priority: 'medium' },
+    defaultValues: client ? formValues(client) : { type: 'company', status: 'lead', priority: 'medium' },
   });
+
+  useEffect(() => {
+    if (!open) return;
+    reset(client ? formValues(client) : { type: 'company', status: 'lead', priority: 'medium' });
+  }, [client, open, reset]);
 
   const onSubmit = async (values: ClientForm) => {
     try {
@@ -56,10 +65,9 @@ export function ClientFormModal({
         await create.mutateAsync({ ...values, tags: [] });
         toast.success('Cliente creato');
       }
-      reset();
       onClose();
-    } catch {
-      toast.error('Errore nel salvataggio');
+    } catch (error) {
+      console.error('[BnsStudio] Salvataggio cliente fallito', error);
     }
   };
 
@@ -72,13 +80,13 @@ export function ClientFormModal({
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Annulla</Button>
-          <Button onClick={handleSubmit(onSubmit)} loading={isSubmitting}>
+          <Button type="submit" form={formId} loading={isSubmitting || create.isPending || update.isPending}>
             {editing ? 'Salva' : 'Crea cliente'}
           </Button>
         </>
       }
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
+      <form id={formId} onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
         <Field label="Tipo">
           <Select {...register('type')}>
             <option value="company">Azienda</option>

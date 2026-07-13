@@ -32,12 +32,10 @@ exception
     return new;
 end;
 $$;
-
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
-
 -- ─────────────── Bootstrap del primo owner ───────────────
 -- Chiamabile SOLO da un utente autenticato. Crea (se manca) l'organizzazione
 -- e collega il chiamante come owner attivo. È idempotente e si "auto-blocca":
@@ -113,6 +111,5 @@ begin
   return v_org_id;
 end;
 $$;
-
 revoke all on function public.bootstrap_owner(text, text, text, text) from public;
 grant execute on function public.bootstrap_owner(text, text, text, text) to authenticated;

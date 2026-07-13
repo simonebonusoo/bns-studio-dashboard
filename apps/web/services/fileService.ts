@@ -2,7 +2,6 @@ import { IS_DEMO, env } from '@/config/env';
 import { getSupabaseClient } from '@/services/supabase';
 import { getActiveSession } from '@/services/session';
 import { repositories } from '@/services/repository';
-import { uid } from '@/lib/id';
 import type { FileItem } from '@/types';
 
 /**
@@ -20,8 +19,12 @@ export interface FileUploadInput {
   folder?: string;
   projectId?: string | null;
   clientId?: string | null;
+  entityType?: FileItem['entityType'];
+  entityId?: string | null;
+  documentCategory?: FileItem['documentCategory'];
   clientVisible?: boolean;
   tags?: string[];
+  metadata?: Record<string, unknown>;
 }
 
 /** Estensione/percorso sicuro: niente path traversal, niente caratteri strani. */
@@ -45,6 +48,10 @@ function assertUnderLimit(file: File) {
   }
 }
 
+function newFileId(): string {
+  return crypto.randomUUID();
+}
+
 export const fileService = {
   /** Carica un file e crea la riga di metadati collegata. */
   async upload(input: FileUploadInput): Promise<FileItem> {
@@ -59,9 +66,13 @@ export const fileService = {
       folder: input.folder,
       projectId: input.projectId ?? null,
       clientId: input.clientId ?? null,
+      entityType: input.entityType ?? 'generic',
+      entityId: input.entityId ?? null,
+      documentCategory: input.documentCategory ?? 'Altro',
       clientVisible: input.clientVisible ?? false,
       uploadedBy: getActiveSession().memberId ?? undefined,
       tags: input.tags ?? [],
+      metadata: input.metadata ?? {},
     };
 
     if (IS_DEMO) {
@@ -76,7 +87,7 @@ export const fileService = {
 
     // Percorso oggetto: <organization_id>/<fileId>/<nome-sicuro>. Il prefisso
     // organization_id è imposto anche dalle policy Storage (isolamento tenant).
-    const fileId = uid();
+    const fileId = newFileId();
     const path = `${organizationId}/${fileId}/${safeName(file.name)}`;
 
     const { error: uploadError } = await getSupabaseClient()

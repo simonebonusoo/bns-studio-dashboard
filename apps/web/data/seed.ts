@@ -37,11 +37,13 @@ const organization: Organization = {
   id: ORG_ID,
   name: 'BNS Studio',
   slug: 'bns-studio',
+  email: 'studio@bnsstudio.it',
   currency: 'EUR',
   locale: 'it-IT',
   timezone: 'Europe/Rome',
   vat: 'IT00000000000',
   createdAt: iso(addDays(now, -420)),
+  updatedAt: iso(now),
 };
 
 const members: Member[] = [

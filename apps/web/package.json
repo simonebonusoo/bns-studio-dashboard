@@ -1,7 +1,7 @@
 {
   "name": "@bns/web",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "BNS Studio OS web app",
   "scripts": {
@@ -19,9 +19,13 @@
     "@supabase/supabase-js": "^2.110.2",
     "@tanstack/react-query": "^5.62.7",
     "@tanstack/react-table": "^8.20.5",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
+    "@tauri-apps/plugin-fs": "^2.5.1",
+    "@tauri-apps/plugin-opener": "^2.5.4",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dexie": "^4.0.10",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.468.0",
     "nanoid": "^5.0.9",
     "react": "^18.3.1",

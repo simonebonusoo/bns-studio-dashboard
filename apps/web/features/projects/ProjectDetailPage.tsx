@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Pencil, Archive, Trash2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Archive, Trash2, FolderOpen, FileText, Receipt, MessagesSquare, PlayCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDetail, useHardDelete, useList, useUpdate } from '@/hooks/useEntities';
 import { Card, CardHeader, MetricCard } from '@/components/ui/Card';
@@ -13,7 +13,7 @@ import { projectProfitability } from '@/lib/finance';
 import { formatCurrency, formatDate, formatPercent, formatHours } from '@/lib/format';
 import { getProjectDeleteSafety, hasBlockingDependencies } from '@/services/deleteSafety';
 import { useAuth } from '@/stores/auth';
-import type { CalendarEvent, Client, Contract, FileItem, Invoice, Milestone, Payment, Project, TimeEntry, Transaction } from '@/types';
+import type { CalendarEvent, Client, Comment, Contract, FileItem, Invoice, Milestone, Payment, Project, TimeEntry, Transaction } from '@/types';
 import { toast } from 'sonner';
 
 type Tab = 'overview' | 'milestones' | 'activity';
@@ -32,6 +32,7 @@ export default function ProjectDetailPage() {
   const { data: files } = useList<FileItem>('files');
   const { data: events } = useList<CalendarEvent>('events');
   const { data: transactions } = useList<Transaction>('transactions');
+  const { data: comments } = useList<Comment>('comments');
   const update = useUpdate<Project>('projects');
   const hardDelete = useHardDelete('projects');
   const [tab, setTab] = useState<Tab>('overview');
@@ -55,6 +56,10 @@ export default function ProjectDetailPage() {
   const profitability = projectProfitability(project, entries ?? []);
   const showFinance = can('finances.read');
   const completedMilestones = projectMilestones.filter((milestone) => milestone.status === 'completed').length;
+  const projectInvoices = (invoices ?? []).filter((invoice) => invoice.projectId === project.id);
+  const projectContracts = (contracts ?? []).filter((contract) => contract.projectId === project.id);
+  const projectFiles = (files ?? []).filter((file) => file.projectId === project.id);
+  const projectUpdates = (comments ?? []).filter((comment) => comment.entityType === 'project' && comment.entityId === project.id);
   const deleteSafety = getProjectDeleteSafety({
     project,
     milestones: milestones ?? [],
@@ -86,6 +91,27 @@ export default function ProjectDetailPage() {
     toast.success('Progetto eliminato definitivamente');
     navigate('/projects');
   };
+
+  const invoiceAction = (() => {
+    if (projectInvoices.length === 0) {
+      const next = new URLSearchParams({ new: '1', projectId: project.id });
+      if (project.clientId) next.set('clientId', project.clientId);
+      return {
+        label: 'Crea fattura',
+        onClick: () => navigate(`/invoices?${next.toString()}`),
+      };
+    }
+    if (projectInvoices.length === 1) {
+      return {
+        label: 'Visualizza fattura',
+        onClick: () => navigate(`/invoices/${projectInvoices[0].id}`),
+      };
+    }
+    return {
+      label: 'Visualizza fatture',
+      onClick: () => navigate(`/invoices?projectId=${project.id}`),
+    };
+  })();
 
   return (
     <div className="space-y-5">
@@ -153,22 +179,76 @@ export default function ProjectDetailPage() {
 
       {tab === 'overview' && (
         <div className="grid gap-4 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
-            <CardHeader title="Descrizione" />
-            <p className="p-4 text-sm text-fg-subtle">{project.description || 'Nessuna descrizione.'}</p>
-          </Card>
-          {showFinance && (
+          <div className="space-y-4 lg:col-span-2">
             <Card>
-              <CardHeader title="Redditività" subtitle={profitability.hasEstimates ? undefined : 'Calcolo parziale: costi orari incompleti'} />
-              <div className="space-y-2 p-4 text-sm">
-                <Row label="Valore contrattuale" value={formatCurrency(profitability.contractValue)} />
-                <Row label="Costo lavoro" value={formatCurrency(profitability.laborCost)} />
-                <Row label="Margine lordo" value={formatCurrency(profitability.grossMargin)} strong />
-                <Row label="Margine %" value={formatPercent(profitability.marginPct)} />
-                <Row label="Scostamento ore" value={`${profitability.hoursVariance}h`} />
+              <CardHeader title="Descrizione" />
+              <p className="p-4 text-sm text-fg-subtle">{project.description || 'Nessuna descrizione.'}</p>
+            </Card>
+
+            <Card>
+              <CardHeader title="Workspace progetto" subtitle="Accessi rapidi al contesto operativo collegato" />
+              <div className="grid gap-3 p-4 sm:grid-cols-2">
+                <WorkspaceAction
+                  icon={FolderOpen}
+                  title="Archivio progetto"
+                  description={`${projectFiles.length} file collegati`}
+                  label="Apri archivio"
+                  onClick={() => navigate(`/files?projectId=${project.id}`)}
+                />
+                <WorkspaceAction
+                  icon={MessagesSquare}
+                  title="Attività interna"
+                  description={`${projectUpdates.length} aggiornamenti nel canale progetto`}
+                  label="Apri Hub"
+                  onClick={() => navigate(`/hub?project=${project.id}`)}
+                />
+                <WorkspaceAction
+                  icon={Receipt}
+                  title="Fatture"
+                  description={`${projectInvoices.length} collegate a questo progetto`}
+                  label={invoiceAction.label}
+                  onClick={invoiceAction.onClick}
+                />
+                <WorkspaceAction
+                  icon={FileText}
+                  title="Contratti"
+                  description={`${projectContracts.length} collegati a questo progetto`}
+                  label={projectContracts.length === 1 ? 'Apri contratto' : 'Apri contratti'}
+                  onClick={() => navigate(`/contracts?projectId=${project.id}`)}
+                />
+                <WorkspaceAction
+                  icon={PlayCircle}
+                  title="Time tracking"
+                  description="Apri il timer già contestualizzato sul progetto"
+                  label="Apri nel Hub"
+                  onClick={() => navigate(`/hub?project=${project.id}`)}
+                />
               </div>
             </Card>
-          )}
+          </div>
+          <div className="space-y-4">
+            {showFinance && (
+              <Card>
+                <CardHeader title="Redditività" subtitle={profitability.hasEstimates ? undefined : 'Calcolo parziale: costi orari incompleti'} />
+                <div className="space-y-2 p-4 text-sm">
+                  <Row label="Valore contrattuale" value={formatCurrency(profitability.contractValue)} />
+                  <Row label="Costo lavoro" value={formatCurrency(profitability.laborCost)} />
+                  <Row label="Margine lordo" value={formatCurrency(profitability.grossMargin)} strong />
+                  <Row label="Margine %" value={formatPercent(profitability.marginPct)} />
+                  <Row label="Scostamento ore" value={`${profitability.hoursVariance}h`} />
+                </div>
+              </Card>
+            )}
+            <Card>
+              <CardHeader title="Collegamenti" />
+              <div className="space-y-2 p-4 text-sm">
+                <Row label="File archivio" value={String(projectFiles.length)} />
+                <Row label="Contratti" value={String(projectContracts.length)} />
+                <Row label="Fatture" value={String(projectInvoices.length)} />
+                <Row label="Aggiornamenti interni" value={String(projectUpdates.length)} />
+              </div>
+            </Card>
+          </div>
         </div>
       )}
 
@@ -252,5 +332,37 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
       <span className="text-fg-subtle">{label}</span>
       <span className={strong ? 'font-semibold' : ''}>{value}</span>
     </div>
+  );
+}
+
+function WorkspaceAction({
+  icon: Icon,
+  title,
+  description,
+  label,
+  onClick,
+}: {
+  icon: typeof FolderOpen;
+  title: string;
+  description: string;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="rounded-xl border border-border bg-surface px-4 py-3 text-left transition-colors hover:border-border-strong hover:bg-surface-2"
+    >
+      <div className="flex items-start gap-3">
+        <div className="rounded-lg bg-surface-2 p-2">
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-medium text-fg">{title}</p>
+          <p className="mt-1 text-sm text-fg-subtle">{description}</p>
+          <p className="mt-2 text-xs font-medium text-fg">{label}</p>
+        </div>
+      </div>
+    </button>
   );
 }

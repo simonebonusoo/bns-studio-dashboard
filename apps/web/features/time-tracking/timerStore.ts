@@ -10,6 +10,7 @@ interface TimerState {
   description: string;
   memberId: string | null;
   start: (opts: { projectId?: string; taskId?: string; description?: string; memberId: string }) => void;
+  setContext: (opts: { projectId?: string | null; taskId?: string | null; description?: string }) => void;
   pause: () => void;
   resume: () => void;
   reset: () => void;
@@ -37,6 +38,14 @@ export const useTimer = create<TimerState>()(
           description: description ?? '',
           memberId,
         });
+      },
+      setContext({ projectId, taskId, description }) {
+        set((state) => ({
+          ...state,
+          projectId: projectId ?? state.projectId,
+          taskId: taskId ?? state.taskId,
+          description: description ?? state.description,
+        }));
       },
       pause() {
         const { startedAt, accumulated } = get();

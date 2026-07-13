@@ -20,10 +20,11 @@ import { StatusBadge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { formatCurrency, formatDate, formatRelative, daysUntil } from '@/lib/format';
 import { invoiceBalance } from '@/lib/finance';
+import { memberAvatarProps } from '@/lib/memberAvatar';
 import type { ActivityLog, Contract, Estimate, Invoice, Member, Payment, Project } from '@/types';
 
 export default function DashboardPage() {
-  const { data, isLoading, isError } = useAnalytics();
+  const { data, isLoading, isError, error } = useAnalytics();
   const navigate = useNavigate();
   const member = useAuth((state) => state.member);
   const timer = useTimer();
@@ -36,7 +37,20 @@ export default function DashboardPage() {
   const { data: contracts } = useList<Contract>('contracts');
 
   if (isLoading) return <LoadingState />;
-  if (isError || !data) return <ErrorState />;
+  if (isError || !data) {
+    if (import.meta.env.DEV && error) {
+      console.error('[BnsStudio] Dashboard analytics failed', error);
+    }
+    return (
+      <ErrorState
+        message={
+          import.meta.env.DEV && error instanceof Error
+            ? `Dashboard non caricata: ${error.message}`
+            : undefined
+        }
+      />
+    );
+  }
 
   const { summary } = data;
   const activeProjects = (projects ?? [])
@@ -110,7 +124,7 @@ export default function DashboardPage() {
     { label: 'Nuovo cliente', icon: UserPlus, onClick: () => navigate('/clients?new=1') },
     { label: 'Nuovo progetto', icon: FolderPlus, onClick: () => navigate('/projects?new=1') },
     { label: 'Nuovo preventivo', icon: FileText, onClick: () => navigate('/estimates?new=1') },
-    { label: 'Nuova fattura', icon: Receipt, onClick: () => navigate('/invoices') },
+    { label: 'Nuova fattura', icon: Receipt, onClick: () => navigate('/invoices?new=1') },
     { label: 'Registra pagamento', icon: CreditCard, onClick: () => navigate('/payments?new=1') },
     { label: 'Avvia timer', icon: Play, onClick: startTimer },
     { label: 'Carica file', icon: Upload, onClick: () => navigate('/files?upload=1') },
@@ -146,9 +160,9 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader title="Progetti attivi" action={<Link to="/projects" className="text-sm text-info hover:underline">Tutti</Link>} />
-          <ul className="divide-y divide-border">
+          <ul className="max-h-72 divide-y divide-border overflow-y-auto overscroll-contain">
             {activeProjects.map((project) => (
               <li key={project.id}>
                 <Link to={`/projects/${project.id}`} className="flex items-center justify-between px-4 py-2.5 hover:bg-surface-2">
@@ -164,9 +178,9 @@ export default function DashboardPage() {
           </ul>
         </Card>
 
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader title="Prossime scadenze" />
-          <ul className="divide-y divide-border">
+          <ul className="max-h-72 divide-y divide-border overflow-y-auto overscroll-contain">
             {upcomingDeadlines.map((item) => {
               const days = daysUntil(item.date);
               return (
@@ -187,20 +201,19 @@ export default function DashboardPage() {
           </ul>
         </Card>
 
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader title="Attività recenti" />
-          <ul className="divide-y divide-border">
+          <ul className="max-h-72 divide-y divide-border overflow-y-auto overscroll-contain">
             {recentLogs.map((log) => (
               <li key={log.id} className="flex items-center gap-2.5 px-4 py-2.5">
-                <Avatar
-                  name={memberName(log.actorId)}
-                  size="xs"
-                  color={(members ?? []).find((item) => item.id === log.actorId)?.avatarColor}
-                />
+                {(() => {
+                  const actor = (members ?? []).find((item) => item.id === log.actorId);
+                  return actor ? <Avatar {...memberAvatarProps(actor)} size="xs" /> : <Avatar name={memberName(log.actorId)} size="xs" />;
+                })()}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm">
-                    <span className="font-medium">{memberName(log.actorId)}</span>{' '}
-                    <span className="text-fg-subtle">{actionLabel(log.action)} {entityLabel(log.entityType)}</span>
+                  <p className="flex min-w-0 items-baseline gap-1 text-sm">
+                    <span className="min-w-0 truncate font-medium">{memberName(log.actorId)}</span>
+                    <span className="min-w-0 truncate text-fg-subtle">{actionLabel(log.action)} {entityLabel(log.entityType)}</span>
                   </p>
                   <p className="text-xs text-fg-faint">{formatRelative(log.createdAt)}</p>
                 </div>
@@ -212,9 +225,9 @@ export default function DashboardPage() {
       </div>
 
       {dueInvoices.length > 0 && (
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader title="Pagamenti da ricevere" action={<Link to="/invoices" className="text-sm text-info hover:underline">Fatture</Link>} />
-          <ul className="divide-y divide-border">
+          <ul className="max-h-80 divide-y divide-border overflow-y-auto overscroll-contain">
             {dueInvoices.map(({ invoice, balance }) => {
               const days = daysUntil(invoice.dueDate);
               return (

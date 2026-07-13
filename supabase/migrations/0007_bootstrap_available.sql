@@ -26,6 +26,5 @@ language sql stable security definer set search_path = public as $$
       and m.deleted_at is null
   );
 $$;
-
 revoke all on function public.bootstrap_available(text) from public;
 grant execute on function public.bootstrap_available(text) to authenticated;

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { projectSchema, type ProjectForm } from '@/schemas';
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea, Field } from '@/components/ui/Input';
 import { useCreate, useUpdate, useList } from '@/hooks/useEntities';
 import { useAuth } from '@/stores/auth';
+import { nextProjectCode } from '@/services/documentNumbers';
 import type { Client, Project, Service } from '@/types';
 import { toast } from 'sonner';
 
@@ -48,6 +50,26 @@ export function ProjectFormModal({
       : { status: 'planned', priority: 'medium', contractValue: 0, budget: 0, estimatedHours: 0 },
   });
 
+  useEffect(() => {
+    if (!open) return;
+    reset(
+      project
+        ? {
+            name: project.name,
+            clientId: project.clientId,
+            serviceId: project.serviceId,
+            status: project.status,
+            priority: project.priority,
+            contractValue: project.contractValue,
+            budget: project.budget,
+            estimatedHours: project.estimatedHours,
+            dueDate: project.dueDate?.slice(0, 10),
+            description: project.description,
+          }
+        : { status: 'planned', priority: 'medium', contractValue: 0, budget: 0, estimatedHours: 0 },
+    );
+  }, [open, project, reset]);
+
   const onSubmit = async (values: ProjectForm) => {
     const payload = {
       ...values,
@@ -57,11 +79,9 @@ export function ProjectFormModal({
       await update.mutateAsync({ id: project.id, patch: payload });
       toast.success('Progetto aggiornato');
     } else {
-      const count = (await import('@/data/db')).db;
-      const total = await count.projects.count();
       await create.mutateAsync({
         ...payload,
-        code: `PRJ-2026-${(total + 1).toString().padStart(3, '0')}`,
+        code: await nextProjectCode(),
         managerId: memberId ?? undefined,
         memberIds: memberId ? [memberId] : [],
         health: 'on_track',
@@ -72,7 +92,6 @@ export function ProjectFormModal({
       });
       toast.success('Progetto creato');
     }
-    reset();
     onClose();
   };
 
@@ -85,7 +104,7 @@ export function ProjectFormModal({
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Annulla</Button>
-          <Button onClick={handleSubmit(onSubmit)} loading={isSubmitting}>{editing ? 'Salva' : 'Crea'}</Button>
+          <Button onClick={handleSubmit(onSubmit)} loading={isSubmitting || create.isPending || update.isPending}>{editing ? 'Salva' : 'Crea'}</Button>
         </>
       }
     >

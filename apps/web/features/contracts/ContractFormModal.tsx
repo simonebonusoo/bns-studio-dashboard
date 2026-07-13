@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Upload, Download, FileCheck } from 'lucide-react';
 import { Modal, ConfirmDialog } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -28,6 +28,29 @@ const STATUSES: { value: Contract['status']; label: string }[] = [
   { value: 'terminated', label: 'Terminato' },
   { value: 'archived', label: 'Archiviato' },
 ];
+const RECURRENCES: { value: NonNullable<Contract['recurrence']>; label: string }[] = [
+  { value: 'one_time', label: 'Una tantum' },
+  { value: 'monthly', label: 'Mensile' },
+  { value: 'quarterly', label: 'Trimestrale' },
+  { value: 'semiannual', label: 'Semestrale' },
+  { value: 'annual', label: 'Annuale' },
+  { value: 'custom', label: 'Custom' },
+];
+const RENEWALS: { value: NonNullable<Contract['renewalType']>; label: string }[] = [
+  { value: 'none', label: 'Nessun rinnovo' },
+  { value: 'manual', label: 'Rinnovo manuale' },
+  { value: 'automatic', label: 'Rinnovo automatico' },
+];
+
+const EMPTY_CONTRACT_FORM = {
+  title: '', clientId: '', projectId: '', estimateId: '', type: 'single_project' as Contract['type'],
+  status: 'draft' as Contract['status'], value: '', startDate: '', endDate: '',
+  recurrence: 'one_time' as NonNullable<Contract['recurrence']>,
+  billingFrequency: 'one_time' as NonNullable<Contract['billingFrequency']>,
+  renewalType: 'none' as NonNullable<Contract['renewalType']>,
+  paymentTerms: '30 giorni', includedRevisions: '2', terms: '', signedByClient: false, signedByStudio: false,
+  pdfName: '', pdfUrl: '',
+};
 
 export function ContractFormModal({ open, onClose, contract }: { open: boolean; onClose: () => void; contract?: Contract | null }) {
   const create = useCreate<Contract>('contracts');
@@ -40,36 +63,42 @@ export function ContractFormModal({ open, onClose, contract }: { open: boolean; 
   const [confirmDel, setConfirmDel] = useState(false);
   const editing = !!contract;
 
-  const blank = {
-    title: '', clientId: '', projectId: '', estimateId: '', type: 'single_project' as Contract['type'],
-    status: 'draft' as Contract['status'], value: '', startDate: '', endDate: '',
-    paymentTerms: '30 giorni', includedRevisions: '2', terms: '', signedByClient: false, signedByStudio: false,
-    pdfName: '', pdfUrl: '',
-  };
   const [form, setForm] = useState(() =>
     contract
       ? {
           title: contract.title, clientId: contract.clientId ?? '', projectId: contract.projectId ?? '',
           estimateId: contract.estimateId ?? '', type: contract.type, status: contract.status,
           value: String(contract.value), startDate: contract.startDate?.slice(0, 10) ?? '',
+          recurrence: contract.recurrence ?? 'one_time',
+          billingFrequency: contract.billingFrequency ?? contract.recurrence ?? 'one_time',
+          renewalType: contract.renewalType ?? 'none',
           endDate: contract.endDate?.slice(0, 10) ?? '', paymentTerms: contract.paymentTerms ?? '30 giorni',
           includedRevisions: String(contract.includedRevisions ?? 2), terms: contract.terms ?? '',
           signedByClient: contract.signedByClient, signedByStudio: contract.signedByStudio,
           pdfName: contract.pdfName ?? '', pdfUrl: contract.pdfUrl ?? '',
         }
-      : blank,
+      : EMPTY_CONTRACT_FORM,
   );
-  const key = contract?.id ?? 'new';
-  const [lastKey, setLastKey] = useState(key);
-  if (lastKey !== key) { setLastKey(key); setForm(contract ? {
-    title: contract.title, clientId: contract.clientId ?? '', projectId: contract.projectId ?? '',
-    estimateId: contract.estimateId ?? '', type: contract.type, status: contract.status,
-    value: String(contract.value), startDate: contract.startDate?.slice(0, 10) ?? '',
-    endDate: contract.endDate?.slice(0, 10) ?? '', paymentTerms: contract.paymentTerms ?? '30 giorni',
-    includedRevisions: String(contract.includedRevisions ?? 2), terms: contract.terms ?? '',
-    signedByClient: contract.signedByClient, signedByStudio: contract.signedByStudio,
-    pdfName: contract.pdfName ?? '', pdfUrl: contract.pdfUrl ?? '',
-  } : blank); }
+
+  useEffect(() => {
+    if (!open) return;
+    setForm(
+      contract
+        ? {
+            title: contract.title, clientId: contract.clientId ?? '', projectId: contract.projectId ?? '',
+            estimateId: contract.estimateId ?? '', type: contract.type, status: contract.status,
+            value: String(contract.value), startDate: contract.startDate?.slice(0, 10) ?? '',
+            recurrence: contract.recurrence ?? 'one_time',
+            billingFrequency: contract.billingFrequency ?? contract.recurrence ?? 'one_time',
+            renewalType: contract.renewalType ?? 'none',
+            endDate: contract.endDate?.slice(0, 10) ?? '', paymentTerms: contract.paymentTerms ?? '30 giorni',
+            includedRevisions: String(contract.includedRevisions ?? 2), terms: contract.terms ?? '',
+            signedByClient: contract.signedByClient, signedByStudio: contract.signedByStudio,
+            pdfName: contract.pdfName ?? '', pdfUrl: contract.pdfUrl ?? '',
+          }
+        : EMPTY_CONTRACT_FORM,
+    );
+  }, [contract, open]);
 
   const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -88,6 +117,9 @@ export function ContractFormModal({ open, onClose, contract }: { open: boolean; 
       title: form.title, clientId: form.clientId || undefined, projectId: form.projectId || undefined,
       estimateId: form.estimateId || undefined, type: form.type, status: form.status,
       value: Number(form.value) || 0, startDate: form.startDate ? new Date(form.startDate).toISOString() : null,
+      recurrence: form.recurrence,
+      billingFrequency: form.billingFrequency,
+      renewalType: form.renewalType,
       endDate: form.endDate ? new Date(form.endDate).toISOString() : null, paymentTerms: form.paymentTerms,
       includedRevisions: Number(form.includedRevisions) || 0, terms: form.terms,
       signedByClient: form.signedByClient, signedByStudio: form.signedByStudio,
@@ -117,7 +149,7 @@ export function ContractFormModal({ open, onClose, contract }: { open: boolean; 
             {editing ? <Button variant="ghost" size="sm" onClick={() => setConfirmDel(true)}>Elimina</Button> : <span />}
             <div className="flex gap-2">
               <Button variant="ghost" onClick={onClose}>Annulla</Button>
-              <Button onClick={submit}>{editing ? 'Salva' : 'Crea'}</Button>
+              <Button onClick={submit} loading={create.isPending || update.isPending}>{editing ? 'Salva' : 'Crea'}</Button>
             </div>
           </div>
         }
@@ -130,6 +162,9 @@ export function ContractFormModal({ open, onClose, contract }: { open: boolean; 
           <Field label="Tipo"><Select value={form.type} onChange={(e) => set('type', e.target.value)}>{TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</Select></Field>
           <Field label="Stato"><Select value={form.status} onChange={(e) => set('status', e.target.value)}>{STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</Select></Field>
           <Field label="Valore (€)"><Input type="number" step="100" value={form.value} onChange={(e) => set('value', e.target.value)} /></Field>
+          <Field label="Ricorrenza"><Select value={form.recurrence} onChange={(e) => set('recurrence', e.target.value)}>{RECURRENCES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</Select></Field>
+          <Field label="Frequenza economica"><Select value={form.billingFrequency} onChange={(e) => set('billingFrequency', e.target.value)}>{RECURRENCES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</Select></Field>
+          <Field label="Rinnovo"><Select value={form.renewalType} onChange={(e) => set('renewalType', e.target.value)}>{RENEWALS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</Select></Field>
           <Field label="Inizio"><Input type="date" value={form.startDate} onChange={(e) => set('startDate', e.target.value)} /></Field>
           <Field label="Fine"><Input type="date" value={form.endDate} onChange={(e) => set('endDate', e.target.value)} /></Field>
           <Field label="Termini di pagamento"><Input value={form.paymentTerms} onChange={(e) => set('paymentTerms', e.target.value)} /></Field>

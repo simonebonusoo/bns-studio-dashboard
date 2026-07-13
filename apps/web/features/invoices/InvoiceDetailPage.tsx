@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Printer, Plus, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Printer, Plus, Pencil, Trash2, Download, Share2 } from 'lucide-react';
 import { useDetail, useList, useCreate, useUpdate, useRemove } from '@/hooks/useEntities';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
@@ -12,8 +12,10 @@ import { DocumentView } from '@/features/finance/DocumentView';
 import { invoiceBalance } from '@/lib/finance';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { getInvoiceDeleteSafety, hasBlockingDependencies } from '@/services/deleteSafety';
+import { syncPaymentCashflow, voidPaymentCashflow } from '@/services/cashflowSync';
 import { useAuth } from '@/stores/auth';
 import { InvoiceFormModal } from './InvoiceFormModal';
+import { downloadPdf, invoicePdfBlob, sharePdf } from '@/services/documentService';
 import type { Invoice, Client, Payment } from '@/types';
 import { toast } from 'sonner';
 
@@ -45,7 +47,7 @@ export default function InvoiceDetailPage() {
   const recordPayment = async () => {
     const value = Number(amount);
     if (!value || value <= 0) { toast.error('Importo non valido'); return; }
-    await createPayment.mutateAsync({
+    const payment = await createPayment.mutateAsync({
       clientId: invoice.clientId,
       invoiceId: invoice.id,
       projectId: invoice.projectId,
@@ -56,6 +58,7 @@ export default function InvoiceDetailPage() {
       status: 'completed',
       reference: `MAN-${Date.now().toString().slice(-5)}`,
     });
+    await syncPaymentCashflow(payment);
     // aggiorna stato fattura in base al nuovo saldo
     const newBalance = invoiceBalance(invoice, [
       ...(payments ?? []),
@@ -72,9 +75,17 @@ export default function InvoiceDetailPage() {
 
   const deleteInvoice = async () => {
     if (blockedDelete) return;
+    await Promise.all(invPayments.map((payment) => voidPaymentCashflow(payment.id)));
     await remove.mutateAsync(invoice.id);
     toast.success('Fattura eliminata');
     navigate('/invoices');
+  };
+
+  const downloadInvoicePdf = async () => {
+    await downloadPdf(`fattura-${invoice.number}.pdf`, invoicePdfBlob(invoice, client));
+  };
+  const shareInvoicePdf = async () => {
+    await sharePdf(`Fattura ${invoice.number}`, `fattura-${invoice.number}.pdf`, invoicePdfBlob(invoice, client));
   };
 
   return (
@@ -86,6 +97,8 @@ export default function InvoiceDetailPage() {
         <div className="flex items-center gap-2">
           <StatusBadge status={invoice.status} />
           <Button variant="secondary" onClick={() => window.print()}><Printer className="h-4 w-4" /> Stampa / PDF</Button>
+          <Button variant="secondary" onClick={downloadInvoicePdf}><Download className="h-4 w-4" /> PDF</Button>
+          <Button variant="secondary" onClick={shareInvoicePdf}><Share2 className="h-4 w-4" /> Share</Button>
           {can('invoices.manage') && (
             <Button variant="secondary" onClick={() => setEditOpen(true)}>
               <Pencil className="h-4 w-4" /> Modifica
@@ -138,7 +151,7 @@ export default function InvoiceDetailPage() {
                     <p className="font-medium">{formatCurrency(p.amount)}</p>
                     <p className="text-xs text-fg-subtle">{formatDate(p.date)} · {p.method}</p>
                   </div>
-                  <StatusBadge status="paid" />
+                  <StatusBadge status={p.status} />
                 </li>
               ))}
               {invPayments.length === 0 && <li className="px-4 py-6 text-center text-sm text-fg-subtle">Nessun pagamento</li>}

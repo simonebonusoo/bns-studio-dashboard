@@ -1216,31 +1216,37 @@ export type Database = {
         Row: {
           created_at: string
           currency: string
+          email: string | null
           id: string
           locale: string
           name: string
           slug: string
           timezone: string
+          updated_at: string
           vat: string | null
         }
         Insert: {
           created_at?: string
           currency?: string
+          email?: string | null
           id?: string
           locale?: string
           name: string
           slug: string
           timezone?: string
+          updated_at?: string
           vat?: string | null
         }
         Update: {
           created_at?: string
           currency?: string
+          email?: string | null
           id?: string
           locale?: string
           name?: string
           slug?: string
           timezone?: string
+          updated_at?: string
           vat?: string | null
         }
         Relationships: []

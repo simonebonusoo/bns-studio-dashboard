@@ -32,7 +32,7 @@ export interface EntityRepository<T extends BaseRow> {
 }
 
 type PublicTables = Database['public']['Tables'];
-type TableName = keyof PublicTables;
+type TableName = keyof PublicTables | 'payment_installments';
 
 const ACTIVITY_ENTITY_BY_TABLE: Partial<Record<TableName, string>> = {
   members: 'member',
@@ -47,6 +47,7 @@ const ACTIVITY_ENTITY_BY_TABLE: Partial<Record<TableName, string>> = {
   estimates: 'estimate',
   invoices: 'invoice',
   payments: 'payment',
+  payment_installments: 'payment_installment',
   transactions: 'transaction',
   contracts: 'contract',
   files: 'file',
@@ -266,7 +267,22 @@ interface DbTableQuery {
 }
 
 function dbTable<K extends TableName>(name: K): DbTableQuery {
-  return getSupabaseClient().from(name) as unknown as DbTableQuery;
+  const client = getSupabaseClient() as unknown as { from: (relation: string) => unknown };
+  return client.from(name) as DbTableQuery;
+}
+
+function throwSupabaseError(tableName: TableName, operation: string, error: PostgrestError): never {
+  if (import.meta.env.DEV) {
+    console.error('[BnsStudio] Supabase query failed', {
+      table: tableName,
+      operation,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+  }
+  throw error;
 }
 
 interface SupabaseRepoOptions {
@@ -282,7 +298,7 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
       let query = dbTable(tableName).select('*');
       if (softDelete) query = query.is('deleted_at', null);
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) throwSupabaseError(tableName, 'list', error);
       const rows = (data ?? []).map((row) => deserialize<T>(row));
       return filter ? rows.filter(filter) : rows;
     },
@@ -291,7 +307,7 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
       let query = dbTable(tableName).select('*').eq('id', id);
       if (softDelete) query = query.is('deleted_at', null);
       const { data, error } = await query.maybeSingle();
-      if (error) throw error;
+      if (error) throwSupabaseError(tableName, 'get', error);
       return data ? deserialize<T>(data) : undefined;
     },
 
@@ -314,7 +330,7 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
         .select('*')
         .single();
 
-      if (error) throw error;
+      if (error) throwSupabaseError(tableName, 'create', error);
       if (!row) throw new Error(`Creazione ${tableName} non riuscita: nessuna riga restituita.`);
       await recordRepositoryActivity(tableName, 'create', String(row.id));
       return deserialize<T>(row);
@@ -328,7 +344,7 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
         .select('*')
         .single();
 
-      if (error) throw error;
+      if (error) throwSupabaseError(tableName, 'update', error);
       if (!row) throw new Error(`Aggiornamento ${tableName} non riuscito: record ${id} inesistente.`);
       await recordRepositoryActivity(
         tableName,
@@ -341,19 +357,19 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
     async remove(id) {
       if (!softDelete) {
         const { error } = await dbTable(tableName).delete().eq('id', id);
-        if (error) throw error;
+        if (error) throwSupabaseError(tableName, 'delete', error);
         await recordRepositoryActivity(tableName, 'delete', id);
         return;
       }
       const payload = serialize({ deletedAt: nowISO(), updatedAt: nowISO() });
       const { error } = await dbTable(tableName).update(payload).eq('id', id);
-      if (error) throw error;
+      if (error) throwSupabaseError(tableName, 'remove', error);
       await recordRepositoryActivity(tableName, 'delete', id);
     },
 
     async hardDelete(id) {
       const { error } = await dbTable(tableName).delete().eq('id', id);
-      if (error) throw error;
+      if (error) throwSupabaseError(tableName, 'hardDelete', error);
       await recordRepositoryActivity(tableName, 'delete', id);
     },
 
@@ -361,7 +377,7 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
       let query = dbTable(tableName).select('*', { count: 'exact', head: true });
       if (softDelete) query = query.is('deleted_at', null);
       const { count, error } = await query;
-      if (error) throw error;
+      if (error) throwSupabaseError(tableName, 'count', error);
       return count ?? 0;
     },
   };
@@ -392,6 +408,7 @@ export const repositories = {
   estimates: createRepository('estimates', db.estimates),
   invoices: createRepository('invoices', db.invoices),
   payments: createRepository('payments', db.payments),
+  paymentInstallments: createRepository('payment_installments', db.paymentInstallments),
   transactions: createRepository('transactions', db.transactions),
   contracts: createRepository('contracts', db.contracts),
   files: createRepository('files', db.files),
