@@ -8,6 +8,7 @@ import { useDetail, useList, useUpdate } from '@/hooks/useEntities';
 import { useRemoveFile, useFileUrl } from '@/hooks/useFiles';
 import { DOCUMENT_CATEGORIES, SOURCE_TYPES } from './documentCategories';
 import { formatDate } from '@/lib/format';
+import { saveUrlFile } from '@/services/downloadService';
 import type { FileItem, Project, Client } from '@/types';
 import { toast } from 'sonner';
 
@@ -47,7 +48,11 @@ export function FileDetailDrawer({ fileId, onClose }: { fileId: string | null; o
         footer={
           <>
             <Button variant="ghost" size="sm" onClick={() => setConfirmDel(true)}><Trash2 className="h-4 w-4 text-danger" /> Elimina</Button>
-            {resolvedUrl && <a href={resolvedUrl} download={file.name} target="_blank" rel="noreferrer"><Button variant="secondary" size="sm"><Download className="h-4 w-4" /> Scarica</Button></a>}
+            {resolvedUrl && (
+              <Button variant="secondary" size="sm" onClick={() => void saveUrlFile(file.name, resolvedUrl, file.mime ?? undefined)}>
+                <Download className="h-4 w-4" /> Scarica
+              </Button>
+            )}
           </>
         }
       >

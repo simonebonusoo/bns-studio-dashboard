@@ -6,6 +6,7 @@ import { Input, Select, Textarea, Field } from '@/components/ui/Input';
 import { useCreate, useUpdate, useRemove, useList } from '@/hooks/useEntities';
 import { env } from '@/config/env';
 import { nextContractNumber } from '@/services/documentNumbers';
+import { saveUrlFile } from '@/services/downloadService';
 import type { Contract, Client, Project, Estimate } from '@/types';
 import { toast } from 'sonner';
 
@@ -182,7 +183,14 @@ export function ContractFormModal({ open, onClose, contract, defaults }: { open:
             <Button variant="secondary" size="sm" onClick={() => fileInput.current?.click()}><Upload className="h-4 w-4" /> Carica PDF firmato</Button>
             {form.pdfName && (
               <span className="flex items-center gap-1.5 text-sm text-fg-subtle"><FileCheck className="h-4 w-4 text-success" /> {form.pdfName}
-                <a href={form.pdfUrl} download={form.pdfName} className="text-info hover:underline"><Download className="inline h-4 w-4" /></a>
+                <button
+                  type="button"
+                  className="text-info hover:underline"
+                  onClick={() => form.pdfUrl && void saveUrlFile(form.pdfName, form.pdfUrl, 'application/pdf')}
+                  aria-label="Scarica PDF firmato"
+                >
+                  <Download className="inline h-4 w-4" />
+                </button>
               </span>
             )}
           </div>
