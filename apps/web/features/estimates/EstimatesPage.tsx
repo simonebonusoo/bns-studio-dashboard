@@ -15,6 +15,9 @@ import { formatCurrency, formatDate } from '@/lib/format';
 import { getEstimateDeleteSafety, hasBlockingDependencies } from '@/services/deleteSafety';
 import { exportToCSV } from '@/utils/csv';
 import { EstimateFormModal } from './EstimateFormModal';
+import { CreateMethodDialog } from '@/features/import/CreateMethodDialog';
+import { ContextualMarkdownImportDialog } from '@/features/import/ContextualMarkdownImportDialog';
+import type { ResolvedImport } from '@/features/import/contextualImport';
 import { useAuth } from '@/stores/auth';
 import type { Estimate, Client, Contract, Invoice } from '@/types';
 import { toast } from 'sonner';
@@ -28,7 +31,10 @@ export default function EstimatesPage() {
   const can = useAuth((state) => state.can);
   const remove = useRemove('estimates');
   const [params, setParams] = useSearchParams();
-  const [open, setOpen] = useState(params.get('new') === '1');
+  const [chooserOpen, setChooserOpen] = useState(params.get('new') === '1');
+  const [open, setOpen] = useState(false);
+  const [markdownOpen, setMarkdownOpen] = useState(false);
+  const [defaults, setDefaults] = useState<Record<string, unknown> | undefined>();
   const [editing, setEditing] = useState<Estimate | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Estimate | null>(null);
   const list = estimates ?? [];
@@ -36,7 +42,22 @@ export default function EstimatesPage() {
   const closeModal = () => {
     setOpen(false);
     setEditing(null);
+    setDefaults(undefined);
     if (params.get('new')) { params.delete('new'); setParams(params, { replace: true }); }
+  };
+  const openChooser = () => setChooserOpen(true);
+  const closeChooser = () => {
+    setChooserOpen(false);
+    if (params.get('new')) { params.delete('new'); setParams(params, { replace: true }); }
+  };
+  const openManual = () => {
+    setDefaults(undefined);
+    setChooserOpen(false);
+    setOpen(true);
+  };
+  const importMarkdown = (result: ResolvedImport) => {
+    setDefaults(result.defaults);
+    setOpen(true);
   };
 
   const clientName = (id?: string) => (clients ?? []).find((c) => c.id === id)?.displayName ?? '—';
@@ -75,6 +96,7 @@ export default function EstimatesPage() {
                       icon: Pencil,
                       onClick: () => {
                         setEditing(estimate);
+                        setDefaults(undefined);
                         setOpen(true);
                       },
                     },
@@ -111,7 +133,7 @@ export default function EstimatesPage() {
         actions={
           <>
             <Button variant="secondary" onClick={() => exportToCSV('preventivi', list.map((e) => ({ numero: e.number, cliente: clientName(e.clientId), totale: total(e), stato: e.status })))}><Download className="h-4 w-4" /> CSV</Button>
-            <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Nuovo preventivo</Button>
+            <Button onClick={openChooser}><Plus className="h-4 w-4" /> Nuovo preventivo</Button>
           </>
         }
       />
@@ -122,7 +144,20 @@ export default function EstimatesPage() {
         <MetricCard label="Totale" value={list.length} />
       </div>
       <DataTable data={list} columns={columns} onRowClick={(e) => navigate(`/estimates/${e.id}`)} />
-      <EstimateFormModal open={open} onClose={closeModal} estimate={editing ?? undefined} />
+      <CreateMethodDialog
+        open={chooserOpen}
+        onClose={closeChooser}
+        entityLabel="preventivo"
+        title="Nuovo preventivo"
+        description="Come vuoi creare questo preventivo?"
+        onManual={openManual}
+        onMarkdown={() => {
+          setChooserOpen(false);
+          setMarkdownOpen(true);
+        }}
+      />
+      <ContextualMarkdownImportDialog open={markdownOpen} onClose={() => setMarkdownOpen(false)} entityType="estimate" onContinue={importMarkdown} />
+      <EstimateFormModal open={open} onClose={closeModal} estimate={editing ?? undefined} defaults={defaults} />
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}

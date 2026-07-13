@@ -6,6 +6,7 @@ import { Input, Select, Textarea, Field } from '@/components/ui/Input';
 import { useCreate, useUpdate, useRemove, useList } from '@/hooks/useEntities';
 import { env } from '@/config/env';
 import { nextContractNumber } from '@/services/documentNumbers';
+import { saveUrlFile } from '@/services/downloadService';
 import type { Contract, Client, Project, Estimate } from '@/types';
 import { toast } from 'sonner';
 
@@ -51,8 +52,9 @@ const EMPTY_CONTRACT_FORM = {
   paymentTerms: '30 giorni', includedRevisions: '2', terms: '', signedByClient: false, signedByStudio: false,
   pdfName: '', pdfUrl: '',
 };
+type ContractFormState = typeof EMPTY_CONTRACT_FORM;
 
-export function ContractFormModal({ open, onClose, contract }: { open: boolean; onClose: () => void; contract?: Contract | null }) {
+export function ContractFormModal({ open, onClose, contract, defaults }: { open: boolean; onClose: () => void; contract?: Contract | null; defaults?: Partial<ContractFormState> }) {
   const create = useCreate<Contract>('contracts');
   const update = useUpdate<Contract>('contracts');
   const remove = useRemove('contracts');
@@ -77,7 +79,7 @@ export function ContractFormModal({ open, onClose, contract }: { open: boolean; 
           signedByClient: contract.signedByClient, signedByStudio: contract.signedByStudio,
           pdfName: contract.pdfName ?? '', pdfUrl: contract.pdfUrl ?? '',
         }
-      : EMPTY_CONTRACT_FORM,
+      : { ...EMPTY_CONTRACT_FORM, ...defaults },
   );
 
   useEffect(() => {
@@ -96,9 +98,9 @@ export function ContractFormModal({ open, onClose, contract }: { open: boolean; 
             signedByClient: contract.signedByClient, signedByStudio: contract.signedByStudio,
             pdfName: contract.pdfName ?? '', pdfUrl: contract.pdfUrl ?? '',
           }
-        : EMPTY_CONTRACT_FORM,
+        : { ...EMPTY_CONTRACT_FORM, ...defaults },
     );
-  }, [contract, open]);
+  }, [contract, defaults, open]);
 
   const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -181,7 +183,14 @@ export function ContractFormModal({ open, onClose, contract }: { open: boolean; 
             <Button variant="secondary" size="sm" onClick={() => fileInput.current?.click()}><Upload className="h-4 w-4" /> Carica PDF firmato</Button>
             {form.pdfName && (
               <span className="flex items-center gap-1.5 text-sm text-fg-subtle"><FileCheck className="h-4 w-4 text-success" /> {form.pdfName}
-                <a href={form.pdfUrl} download={form.pdfName} className="text-info hover:underline"><Download className="inline h-4 w-4" /></a>
+                <button
+                  type="button"
+                  className="text-info hover:underline"
+                  onClick={() => form.pdfUrl && void saveUrlFile(form.pdfName, form.pdfUrl, 'application/pdf')}
+                  aria-label="Scarica PDF firmato"
+                >
+                  <Download className="inline h-4 w-4" />
+                </button>
               </span>
             )}
           </div>

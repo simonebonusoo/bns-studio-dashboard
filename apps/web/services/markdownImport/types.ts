@@ -103,6 +103,10 @@ export interface ImportAnalysisResult {
   candidateCount: number;
 }
 
+export interface ImportAnalysisOptions {
+  expectedEntityType?: ImportEntityType;
+}
+
 export interface ImportContextData {
   clients: Client[];
   services: Service[];

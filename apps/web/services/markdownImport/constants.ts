@@ -80,6 +80,7 @@ export const CLIENT_STATUS_MAP: Record<string, string> = {
 
 export const PROJECT_STATUS_MAP: Record<string, string> = {
   lead: 'lead',
+  prospect: 'lead',
   draft: 'draft',
   bozza: 'draft',
   planned: 'planned',

@@ -11,6 +11,9 @@ import { Modal, ConfirmDialog } from '@/components/ui/Modal';
 import { ActionMenu } from '@/components/ui/ActionMenu';
 import { useList, useRemove, useUpdate } from '@/hooks/useEntities';
 import { ContractFormModal } from './ContractFormModal';
+import { CreateMethodDialog } from '@/features/import/CreateMethodDialog';
+import { ContextualMarkdownImportDialog } from '@/features/import/ContextualMarkdownImportDialog';
+import type { ResolvedImport } from '@/features/import/contextualImport';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { useAuth } from '@/stores/auth';
 import {
@@ -49,7 +52,10 @@ export default function ContractsPage() {
   const can = useAuth((s) => s.can);
   const [params, setParams] = useSearchParams();
   const projectFilter = params.get('projectId');
-  const [open, setOpen] = useState(params.get('new') === '1');
+  const [chooserOpen, setChooserOpen] = useState(params.get('new') === '1' && !projectFilter);
+  const [open, setOpen] = useState(params.get('new') === '1' && Boolean(projectFilter));
+  const [markdownOpen, setMarkdownOpen] = useState(false);
+  const [defaults, setDefaults] = useState<Record<string, unknown> | undefined>();
   const [editing, setEditing] = useState<Contract | null>(null);
   const [selected, setSelected] = useState<Contract | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Contract | null>(null);
@@ -77,6 +83,7 @@ export default function ContractsPage() {
   const closeModal = () => {
     setOpen(false);
     setEditing(null);
+    setDefaults(undefined);
     if (params.get('new')) {
       params.delete('new');
       setParams(params, { replace: true });
@@ -84,6 +91,24 @@ export default function ContractsPage() {
   };
   const openEdit = (contract: Contract) => {
     setEditing(contract);
+    setDefaults(undefined);
+    setOpen(true);
+  };
+  const openChooser = () => setChooserOpen(true);
+  const closeChooser = () => {
+    setChooserOpen(false);
+    if (params.get('new')) {
+      params.delete('new');
+      setParams(params, { replace: true });
+    }
+  };
+  const openManual = () => {
+    setDefaults(undefined);
+    setChooserOpen(false);
+    setOpen(true);
+  };
+  const importMarkdown = (result: ResolvedImport) => {
+    setDefaults(result.defaults);
     setOpen(true);
   };
   const archiveContract = async (contract: Contract) => {
@@ -105,7 +130,7 @@ export default function ContractsPage() {
       <PageHeader
         title="Contratti"
         description={`${filteredContracts.length} rapporti contrattuali · cliente → progetto → servizio`}
-        actions={canManage && <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Nuovo contratto</Button>}
+        actions={canManage && <Button onClick={projectFilter ? openManual : openChooser}><Plus className="h-4 w-4" /> Nuovo contratto</Button>}
       />
       {projectFilter && (
         <div className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3 text-sm">
@@ -124,7 +149,7 @@ export default function ContractsPage() {
         </div>
       )}
       {filteredContracts.length === 0 ? (
-        <EmptyState title="Nessun contratto" action={canManage && <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Nuovo contratto</Button>} />
+        <EmptyState title="Nessun contratto" action={canManage && <Button onClick={projectFilter ? openManual : openChooser}><Plus className="h-4 w-4" /> Nuovo contratto</Button>} />
       ) : (
         <div className="space-y-4">
           {grouped.map((clientGroup, index) => (
@@ -177,7 +202,20 @@ export default function ContractsPage() {
         onArchive={(contract) => void archiveContract(contract)}
         onDelete={(contract) => setDeleteTarget(contract)}
       />
-      <ContractFormModal open={open} onClose={closeModal} contract={editing} />
+      <CreateMethodDialog
+        open={chooserOpen}
+        onClose={closeChooser}
+        entityLabel="contratto"
+        title="Nuovo contratto"
+        description="Come vuoi creare questo contratto?"
+        onManual={openManual}
+        onMarkdown={() => {
+          setChooserOpen(false);
+          setMarkdownOpen(true);
+        }}
+      />
+      <ContextualMarkdownImportDialog open={markdownOpen} onClose={() => setMarkdownOpen(false)} entityType="contract" onContinue={importMarkdown} />
+      <ContractFormModal open={open} onClose={closeModal} contract={editing} defaults={{ projectId: projectFilter ?? '', ...defaults }} />
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}

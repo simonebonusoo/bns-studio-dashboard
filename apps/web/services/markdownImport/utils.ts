@@ -42,10 +42,23 @@ export function sanitizeText(value: unknown) {
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+    .replace(/(^|[\s([{])[*_]{1,3}([^*_]+)[*_]{1,3}(?=$|[\s.,;:!?)}\]])/g, '$1$2')
+    .replace(/`([^`]+)`/g, '$1')
     .replace(/javascript:/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
   return text;
+}
+
+export function sanitizeMarkdownText(value: unknown) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/javascript:/gi, '')
+    .trim();
 }
 
 export function extractWikiLinks(value: string) {

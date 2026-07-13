@@ -10,6 +10,9 @@ import { Avatar } from '@/components/ui/Avatar';
 import { StatusBadge } from '@/components/ui/Badge';
 import { EmptyState, LoadingState } from '@/components/ui/States';
 import { ClientFormModal } from './ClientFormModal';
+import { CreateMethodDialog } from '@/features/import/CreateMethodDialog';
+import { ContextualMarkdownImportDialog } from '@/features/import/ContextualMarkdownImportDialog';
+import type { ResolvedImport } from '@/features/import/contextualImport';
 import { useList, useRemove } from '@/hooks/useEntities';
 import { useAuth } from '@/stores/auth';
 import { exportToCSV } from '@/utils/csv';
@@ -23,7 +26,10 @@ export default function ClientsPage() {
   const can = useAuth((s) => s.can);
   const remove = useRemove('clients');
   const [params, setParams] = useSearchParams();
-  const [open, setOpen] = useState(params.get('new') === '1');
+  const [chooserOpen, setChooserOpen] = useState(params.get('new') === '1');
+  const [open, setOpen] = useState(false);
+  const [markdownOpen, setMarkdownOpen] = useState(false);
+  const [defaults, setDefaults] = useState<Record<string, unknown> | undefined>();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('all');
 
@@ -74,10 +80,28 @@ export default function ClientsPage() {
 
   const closeModal = () => {
     setOpen(false);
+    setDefaults(undefined);
     if (params.get('new')) {
       params.delete('new');
       setParams(params, { replace: true });
     }
+  };
+  const openChooser = () => setChooserOpen(true);
+  const closeChooser = () => {
+    setChooserOpen(false);
+    if (params.get('new')) {
+      params.delete('new');
+      setParams(params, { replace: true });
+    }
+  };
+  const openManual = () => {
+    setDefaults(undefined);
+    setChooserOpen(false);
+    setOpen(true);
+  };
+  const importMarkdown = (result: ResolvedImport) => {
+    setDefaults(result.defaults);
+    setOpen(true);
   };
 
   return (
@@ -91,7 +115,7 @@ export default function ClientsPage() {
               <Download className="h-4 w-4" /> Esporta CSV
             </Button>
             {can('clients.write') && (
-              <Button onClick={() => setOpen(true)}>
+              <Button onClick={openChooser}>
                 <Plus className="h-4 w-4" /> Nuovo cliente
               </Button>
             )}
@@ -120,13 +144,26 @@ export default function ClientsPage() {
         <EmptyState
           title="Nessun cliente"
           description="Aggiungi il primo cliente per iniziare a costruire il tuo CRM."
-          action={can('clients.write') && <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Nuovo cliente</Button>}
+          action={can('clients.write') && <Button onClick={openChooser}><Plus className="h-4 w-4" /> Nuovo cliente</Button>}
         />
       ) : (
         <DataTable data={filtered} columns={columns} onRowClick={(c) => navigate(`/clients/${c.id}`)} rowMenu={rowMenu} />
       )}
 
-      <ClientFormModal open={open} onClose={closeModal} />
+      <CreateMethodDialog
+        open={chooserOpen}
+        onClose={closeChooser}
+        entityLabel="cliente"
+        title="Nuovo cliente"
+        description="Come vuoi creare questo cliente?"
+        onManual={openManual}
+        onMarkdown={() => {
+          setChooserOpen(false);
+          setMarkdownOpen(true);
+        }}
+      />
+      <ContextualMarkdownImportDialog open={markdownOpen} onClose={() => setMarkdownOpen(false)} entityType="client" onContinue={importMarkdown} />
+      <ClientFormModal open={open} onClose={closeModal} defaults={defaults} />
     </div>
   );
 }

@@ -149,6 +149,48 @@ Totale: €1.800`,
     expect(result.candidates.map((candidate) => candidate.entityType)).toEqual(['client', 'project', 'estimate']);
   });
 
+  it('limita l analisi contestuale al tipo atteso', () => {
+    const parsed = parseMarkdownDocument(
+      'multi.md',
+      `# K9 Pro
+
+## Cliente
+Nome: K9 Security Academy
+
+## Progetto
+Nome progetto: K9 Pro
+Cliente: K9 Security Academy`,
+    );
+
+    const result = analyzeParsedMarkdown([parsed], { expectedEntityType: 'project' });
+    expect(result.candidates.every((candidate) => candidate.entityType === 'project')).toBe(true);
+    expect(result.candidates.some((candidate) => candidate.entityType === 'client')).toBe(false);
+  });
+
+  it('segnala mismatch quando il markdown descrive un altra entita', () => {
+    const parsed = parseMarkdownDocument(
+      'project.md',
+      `## Progetto
+Nome progetto: Kokoro Sito
+Cliente: Kokoro Sushi Roma`,
+    );
+
+    const result = analyzeParsedMarkdown([parsed], { expectedEntityType: 'client' });
+    expect(result.candidates[0]?.duplicateStatus).toBe('invalid');
+    expect(result.candidates[0]?.warnings.some((warning) => warning.code === 'entity_type_mismatch')).toBe(true);
+  });
+
+  it('rimuove enfasi markdown dai valori estratti', () => {
+    const parsed = parseMarkdownDocument(
+      'client.md',
+      `## Cliente
+Nome: **Kokoro Sushi Roma**`,
+    );
+
+    const result = analyzeParsedMarkdown([parsed]);
+    expect(result.candidates[0]?.normalizedFields.displayName).toBe('Kokoro Sushi Roma');
+  });
+
   it('normalizza importi italiani', () => {
     expect(parseItalianNumber('€1.800,00')).toBe(1800);
     expect(parseItalianNumber('1.800 €')).toBe(1800);
@@ -335,5 +377,96 @@ Valore: €900`,
     const createdProject = store.projects[0];
     expect(createdClient?.displayName).toBe('Batch Client');
     expect(createdProject?.clientId).toBe(createdClient?.id);
+  });
+
+  it('riconosce il template ufficiale Cliente', () => {
+    const fixture = readFileSync(resolve(process.cwd(), '../../docs/markdown-templates/client.md'), 'utf8');
+    const parsed = parseMarkdownDocument('client.md', fixture);
+    const result = analyzeParsedMarkdown([parsed], { expectedEntityType: 'client' });
+
+    expect(result.candidates).toHaveLength(1);
+    expect(result.candidates[0]?.entityType).toBe('client');
+    expect(result.candidates[0]?.normalizedFields.displayName).toBe('Kokoro Sushi');
+    expect(result.candidates[0]?.normalizedFields.status).toBe('prospect');
+    expect(result.candidates[0]?.normalizedFields.priority).toBe('medium');
+  });
+
+  it('riconosce il template ufficiale Progetto senza trasformare Note operative in entita', () => {
+    store.clients.push({ id: 'client-1', organizationId: 'org-1', displayName: 'Kokoro Sushi', status: 'active', priority: 'medium', tags: [], createdAt: '', updatedAt: '' });
+    store.services.push({ id: 'service-1', organizationId: 'org-1', name: 'Sviluppo web e gestionale', category: 'Web', basePrice: 0, priceUnit: 'fixed', vatRate: 22, active: true, color: '#b0d62e', createdAt: '', updatedAt: '' });
+    const fixture = readFileSync(resolve(process.cwd(), '../../docs/markdown-templates/project.md'), 'utf8');
+    const parsed = parseMarkdownDocument('project.md', fixture);
+    const result = analyzeParsedMarkdown([parsed]);
+    detectDuplicates(result.candidates, {
+      clients: store.clients as any[],
+      services: store.services as any[],
+      projects: [],
+      estimates: [],
+      contracts: [],
+      invoices: [],
+      payments: [],
+      transactions: [],
+      events: [],
+    });
+
+    expect(result.candidates.map((candidate) => candidate.entityType)).toEqual(['project']);
+    expect(result.candidates[0]?.normalizedFields.name).toBe('Kokoro Sushi - Sito Web e Gestionale');
+    expect(result.candidates[0]?.relationshipHints.find((hint) => hint.field === 'clientId')?.resolvedId).toBe('client-1');
+    expect(result.candidates[0]?.relationshipHints.find((hint) => hint.field === 'serviceId')?.resolvedId).toBe('service-1');
+  });
+
+  it('riconosce contratto K9-like con ricorrenza e condizioni', () => {
+    const fixture = readFileSync(resolve(process.cwd(), '../../docs/markdown-templates/contract.md'), 'utf8');
+    const parsed = parseMarkdownDocument('contract.md', fixture);
+    const result = analyzeParsedMarkdown([parsed], { expectedEntityType: 'contract' });
+
+    expect(result.candidates).toHaveLength(1);
+    expect(result.candidates[0]?.entityType).toBe('contract');
+    expect(result.candidates[0]?.normalizedFields.title).toContain('K9 Pro');
+    expect(result.candidates[0]?.normalizedFields.recurrence).toBe('monthly');
+    expect(result.candidates[0]?.normalizedFields.billingFrequency).toBe('monthly');
+    expect(result.candidates[0]?.normalizedFields.renewalType).toBe('automatic');
+    expect(String(result.candidates[0]?.normalizedFields.terms)).toContain('Oggetto del servizio');
+  });
+
+  it('riconosce pagamento rateizzato ufficiale con tre rate', () => {
+    const fixture = readFileSync(resolve(process.cwd(), '../../docs/markdown-templates/payment.md'), 'utf8');
+    const parsed = parseMarkdownDocument('payment.md', fixture);
+    const result = analyzeParsedMarkdown([parsed], { expectedEntityType: 'payment' });
+    const installments = result.candidates[0]?.normalizedFields.installments as Array<Record<string, unknown>>;
+
+    expect(result.candidates).toHaveLength(1);
+    expect(result.candidates[0]?.normalizedFields.paymentType).toBe('installments');
+    expect(result.candidates[0]?.normalizedFields.amount).toBe(1800);
+    expect(installments).toHaveLength(3);
+    expect(installments[0]?.amount).toBe(600);
+    expect(installments[0]?.status).toBe('scheduled');
+  });
+
+  it('riconosce bundle ufficiale Cliente + Progetto senza entita spurie', () => {
+    const fixture = readFileSync(resolve(process.cwd(), '../../docs/markdown-templates/bundle.md'), 'utf8');
+    const parsed = parseMarkdownDocument('bundle.md', fixture);
+    const result = analyzeParsedMarkdown([parsed]);
+
+    expect(result.candidates.map((candidate) => candidate.entityType)).toEqual(['client', 'project']);
+    expect(result.candidates.some((candidate) => candidate.sourceSection === 'Note operative')).toBe(false);
+  });
+
+  it('non propone Note operative come entita legacy autonoma', () => {
+    const parsed = parseMarkdownDocument(
+      'kokoro-like.md',
+      `# Kokoro Sushi
+
+## Progetto
+- Nome: Kokoro Sushi - Sito Web
+- Cliente: Kokoro Sushi
+
+## Note operative
+- type: company
+- displayName: Note operative`,
+    );
+
+    const result = analyzeParsedMarkdown([parsed]);
+    expect(result.candidates.map((candidate) => candidate.entityType)).toEqual(['project']);
   });
 });

@@ -1,5 +1,5 @@
 import YAML from 'yaml';
-import { extractLinks, extractWikiLinks, normalizeLabel, sanitizeText } from './utils';
+import { extractLinks, extractWikiLinks, normalizeLabel, sanitizeMarkdownText, sanitizeText } from './utils';
 import type { ParsedMarkdownFile, ParsedMarkdownSection, ParsedMarkdownTable } from './types';
 
 function emptySection(heading: string, level: number): ParsedMarkdownSection {
@@ -105,7 +105,7 @@ function parseSection(section: ParsedMarkdownSection) {
       }
     }
 
-    section.paragraphs.push(sanitizeText(trimmed));
+    section.paragraphs.push(sanitizeMarkdownText(trimmed));
   });
 
   flushTable();

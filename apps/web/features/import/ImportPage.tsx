@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { FileUp, Loader2, RefreshCcw, Trash2, Upload } from 'lucide-react';
+import { Download, FileUp, Loader2, RefreshCcw, Trash2, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -7,7 +7,6 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { Field, Input, Select, Textarea } from '@/components/ui/Input';
 import { EmptyState } from '@/components/ui/States';
 import { useAuth } from '@/stores/auth';
 import { queryKeys, useList } from '@/hooks/useEntities';
@@ -23,7 +22,12 @@ import {
   type ImportCandidate,
   type ImportEntityType,
   type ImportExecutionSummary,
+  fieldLabel,
 } from '@/services/markdownImport';
+import { MarkdownImportReview } from './MarkdownImportReview';
+import { MARKDOWN_TEMPLATES, downloadMarkdownTemplate } from './markdownTemplates';
+import { summarizeRelationships } from './contextualImport';
+import type { ImportContextData } from '@/services/markdownImport';
 
 type WizardStep = 1 | 2 | 3 | 4;
 
@@ -62,6 +66,7 @@ export default function ImportPage() {
   const [candidates, setCandidates] = useState<ImportCandidate[]>([]);
   const [summary, setSummary] = useState<ImportExecutionSummary | null>(null);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+  const [context, setContext] = useState<ImportContextData | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const grouped = useMemo(() => {
@@ -106,7 +111,11 @@ export default function ImportPage() {
     setAnalyzing(true);
     setSummary(null);
     try {
-      const analysis = await analyzeMarkdownFiles(readyFiles.map((file) => ({ name: file.name, content: file.content })));
+      const [analysis, importContext] = await Promise.all([
+        analyzeMarkdownFiles(readyFiles.map((file) => ({ name: file.name, content: file.content }))),
+        loadImportContext(),
+      ]);
+      setContext(importContext);
       setCandidates(analysis.candidates);
       setExpandedIds(Object.fromEntries(analysis.candidates.slice(0, 6).map((candidate) => [candidate.temporaryId, true])));
       setStep(3);
@@ -238,35 +247,16 @@ export default function ImportPage() {
                           <button onClick={() => setExpandedIds((current) => ({ ...current, [candidate.temporaryId]: !expanded }))} className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left">
                             <div className="min-w-0">
                               <p className="truncate text-sm font-medium">{String(candidate.normalizedFields.displayName ?? candidate.normalizedFields.name ?? candidate.normalizedFields.number ?? candidate.normalizedFields.title ?? candidate.sourceSection ?? candidate.sourceFile)}</p>
-                              <p className="text-xs text-fg-subtle">{ENTITY_LABELS[candidate.entityType]} · {confidenceLabel(candidate.confidence)} · {duplicateLabel(candidate.duplicateStatus)}</p>
+                              <p className="text-xs text-fg-subtle">{ENTITY_LABELS[candidate.entityType]} · {confidenceLabel(candidate.confidence)} · {duplicateLabel(candidate.duplicateStatus, candidate.entityType)}</p>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge tone={candidate.confidence >= 0.9 ? 'success' : candidate.confidence >= 0.7 ? 'warning' : 'danger'}>{Math.round(candidate.confidence * 100)}%</Badge>
-                              <Badge tone={duplicateTone(candidate.duplicateStatus)}>{duplicateLabel(candidate.duplicateStatus)}</Badge>
+                              <Badge tone={candidate.confidence >= 0.82 ? 'success' : candidate.confidence >= 0.55 ? 'warning' : 'danger'}>{confidenceLabel(candidate.confidence)}</Badge>
+                              <Badge tone={duplicateTone(candidate.duplicateStatus)}>{duplicateLabel(candidate.duplicateStatus, candidate.entityType)}</Badge>
                             </div>
                           </button>
 
                           {expanded && (
                             <div className="space-y-4 border-t border-border px-4 py-4">
-                              <div className="grid gap-4 md:grid-cols-2">
-                                <Field label="Azione">
-                                  <Select value={candidate.action} onChange={(event) => updateCandidate(candidate.temporaryId, (current) => ({ ...current, action: event.target.value as ImportAction }))}>
-                                    {availableActions(candidate).map((action) => <option key={action} value={action}>{action === 'create' ? 'Crea nuovo' : action === 'update' ? 'Aggiorna esistente' : 'Ignora'}</option>)}
-                                  </Select>
-                                </Field>
-                                <Field label="Origine">
-                                  <Input value={`${candidate.sourceFile}${candidate.sourceSection ? ` · ${candidate.sourceSection}` : ''}`} readOnly />
-                                </Field>
-                              </div>
-
-                              {candidate.warnings.length > 0 && (
-                                <div className="space-y-2">
-                                  {candidate.warnings.map((warning, index) => (
-                                    <div key={`${warning.code}-${index}`} className={`rounded-lg px-3 py-2 text-sm ${warning.level === 'error' ? 'bg-danger/10 text-danger' : 'bg-warning/10 text-warning'}`}>{warning.message}</div>
-                                  ))}
-                                </div>
-                              )}
-
                               {candidate.duplicateStatus === 'existing_different' && candidate.existingSnapshot && (
                                 <div className="space-y-2 rounded-xl border border-border bg-surface-2/50 p-3">
                                   <p className="text-sm font-medium">Un record simile esiste già</p>
@@ -275,7 +265,7 @@ export default function ImportPage() {
                                     if (JSON.stringify(databaseValue ?? null) === JSON.stringify(markdownValue ?? null)) return null;
                                     return (
                                       <div key={key} className="rounded-lg border border-border bg-surface px-3 py-2">
-                                        <p className="text-xs font-medium uppercase tracking-wide text-fg-faint">{key}</p>
+                                        <p className="text-xs font-medium uppercase tracking-wide text-fg-faint">{fieldLabel(key)}</p>
                                         <div className="mt-2 grid gap-3 md:grid-cols-2">
                                           <div>
                                             <p className="text-2xs text-fg-faint">Database</p>
@@ -296,32 +286,19 @@ export default function ImportPage() {
                                 </div>
                               )}
 
-                              <div className="grid gap-4 md:grid-cols-2">
-                                {Object.entries(candidate.normalizedFields).map(([key, value]) => (
-                                  <Field key={key} label={key}>
-                                    <FieldEditor entityType={candidate.entityType} fieldKey={key} value={value} onChange={(nextValue) => updateCandidate(candidate.temporaryId, (current) => ({ ...current, normalizedFields: { ...current.normalizedFields, [key]: nextValue } }))} />
-                                  </Field>
-                                ))}
-                              </div>
-
-                              {candidate.relationshipHints.length > 0 && (
-                                <div className="rounded-xl border border-border bg-surface-2/40 p-3">
-                                  <p className="text-sm font-medium">Relazioni rilevate</p>
-                                  <div className="mt-2 space-y-2">
-                                    {candidate.relationshipHints.map((hint) => (
-                                      <div key={`${candidate.temporaryId}-${hint.field}-${hint.value}`} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2 text-sm">
-                                        <div>
-                                          <p className="font-medium">{hint.field}</p>
-                                          <p className="text-fg-subtle">{hint.value}</p>
-                                        </div>
-                                        <Badge tone={hint.resolvedId || hint.matchedCandidateId ? 'success' : hint.ambiguousIds?.length ? 'warning' : 'danger'}>
-                                          {hint.resolvedId ? 'Risolta su database' : hint.matchedCandidateId ? 'Risolta nel batch' : hint.ambiguousIds?.length ? 'Ambigua' : 'Da risolvere'}
-                                        </Badge>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
+                              <MarkdownImportReview
+                                candidate={candidate}
+                                relationshipSummaries={context ? summarizeRelationships(candidate, context) : []}
+                                selections={Object.fromEntries(candidate.relationshipHints.map((hint) => [hint.field, hint.resolvedId ?? '']))}
+                                onRelationshipChange={(field, id) => updateCandidate(candidate.temporaryId, (current) => ({
+                                  ...current,
+                                  relationshipHints: current.relationshipHints.map((hint) => hint.field === field ? { ...hint, resolvedId: id || undefined } : hint),
+                                }))}
+                                action={candidate.action}
+                                availableActions={availableActions(candidate)}
+                                onActionChange={(action) => updateCandidate(candidate.temporaryId, (current) => ({ ...current, action }))}
+                                onChange={(normalizedFields) => updateCandidate(candidate.temporaryId, (current) => ({ ...current, normalizedFields }))}
+                              />
                             </div>
                           )}
                         </div>
@@ -383,6 +360,17 @@ export default function ImportPage() {
 
         <div className="space-y-4">
           <Card>
+            <CardHeader title="Modelli Markdown" subtitle="Template ufficiali BnsStudio v1 per Claude, Codex e compilazione manuale." />
+            <div className="grid gap-2 p-4 sm:grid-cols-2 xl:grid-cols-1">
+              {MARKDOWN_TEMPLATES.map((template) => (
+                <Button key={template.entityType} variant="secondary" className="justify-start" onClick={() => void downloadMarkdownTemplate(template)}>
+                  <Download className="h-4 w-4" /> {template.label}
+                </Button>
+              ))}
+            </div>
+          </Card>
+
+          <Card>
             <CardHeader title="Importazioni recenti" subtitle="Storico persistito per organizzazione" />
             <div className="space-y-2 p-4">
               {(history ?? []).length === 0 ? <p className="text-sm text-fg-subtle">Nessuna importazione registrata.</p> : [...(history ?? [])].sort((left, right) => (left.createdAt < right.createdAt ? 1 : -1)).slice(0, 8).map((item) => (
@@ -435,8 +423,15 @@ function confidenceLabel(confidence: number) {
   return 'Incerta';
 }
 
-function duplicateLabel(status: ImportCandidate['duplicateStatus']) {
-  return { new: 'Nuovo', existing_identical: 'Già presente', existing_different: 'Con modifiche', ambiguous_match: 'Conflitto', invalid: 'Errore' }[status];
+function duplicateLabel(status: ImportCandidate['duplicateStatus'], entityType?: ImportEntityType) {
+  const entity = entityType ? (ENTITY_LABELS[entityType] ?? 'record').toLowerCase() : 'record';
+  return {
+    new: `Crea nuovo ${entity}`,
+    existing_identical: 'Gia presente',
+    existing_different: 'Record esistente trovato',
+    ambiguous_match: 'Corrispondenza ambigua',
+    invalid: 'Da correggere',
+  }[status];
 }
 
 function duplicateTone(status: ImportCandidate['duplicateStatus']): 'success' | 'warning' | 'danger' | 'neutral' {
@@ -473,84 +468,4 @@ function formatFieldValue(value: unknown) {
   if (typeof value === 'boolean') return value ? 'Sì' : 'No';
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
-}
-
-function FieldEditor({ entityType, fieldKey, value, onChange }: { entityType: ImportEntityType; fieldKey: string; value: unknown; onChange: (value: unknown) => void }) {
-  if (fieldKey === 'items' && Array.isArray(value)) {
-    return (
-      <div className="space-y-3 rounded-xl border border-border p-3">
-        {value.map((item, index) => {
-          const line = item as Record<string, unknown>;
-          return (
-            <div key={`${fieldKey}-${index}`} className="grid gap-2 md:grid-cols-4">
-              <Input value={String(line.description ?? '')} onChange={(event) => { const next = [...value] as Record<string, unknown>[]; next[index] = { ...line, description: event.target.value }; onChange(next); }} />
-              <Input type="number" value={String(line.quantity ?? 1)} onChange={(event) => { const next = [...value] as Record<string, unknown>[]; next[index] = { ...line, quantity: Number(event.target.value) }; onChange(next); }} />
-              <Input type="number" value={String(line.unitPrice ?? 0)} onChange={(event) => { const next = [...value] as Record<string, unknown>[]; next[index] = { ...line, unitPrice: Number(event.target.value) }; onChange(next); }} />
-              <Input type="number" value={String(line.vatRate ?? 22)} onChange={(event) => { const next = [...value] as Record<string, unknown>[]; next[index] = { ...line, vatRate: Number(event.target.value) }; onChange(next); }} />
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  if (typeof value === 'boolean') {
-    return <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={value} onChange={(event) => onChange(event.target.checked)} className="accent-accent" />{value ? 'Attivo' : 'Disattivo'}</label>;
-  }
-
-  if (typeof value === 'number') {
-    return <Input type="number" step="0.01" value={String(value)} onChange={(event) => onChange(Number(event.target.value))} />;
-  }
-
-  if (Array.isArray(value)) {
-    return <Input value={value.join(', ')} onChange={(event) => onChange(event.target.value.split(',').map((entry) => entry.trim()).filter(Boolean))} />;
-  }
-
-  const stringValue = String(value ?? '');
-  if (fieldKey.toLowerCase().includes('date') && !stringValue.includes('T')) {
-    return <Input type="date" value={stringValue} onChange={(event) => onChange(event.target.value)} />;
-  }
-  if (fieldKey === 'start' || fieldKey === 'end') {
-    return <Input type="datetime-local" value={stringValue.replace('.000Z', '').slice(0, 16)} onChange={(event) => onChange(new Date(event.target.value).toISOString())} />;
-  }
-
-  const selectOptions = getSelectOptions(entityType, fieldKey);
-  if (selectOptions) {
-    return <Select value={stringValue} onChange={(event) => onChange(event.target.value)}>{selectOptions.map((option) => <option key={option} value={option}>{option}</option>)}</Select>;
-  }
-
-  if (['description', 'notes', 'terms'].includes(fieldKey)) {
-    return <Textarea value={stringValue} onChange={(event) => onChange(event.target.value)} />;
-  }
-  return <Input value={stringValue} onChange={(event) => onChange(event.target.value)} />;
-}
-
-function getSelectOptions(entityType: ImportEntityType, fieldKey: string) {
-  if (fieldKey === 'status') {
-    const statusOptions: Partial<Record<ImportEntityType, string[]>> = {
-      client: ['lead', 'prospect', 'active', 'inactive', 'past_client', 'partner', 'archived'],
-      service: undefined,
-      project: ['draft', 'planned', 'active', 'waiting_client', 'review', 'paused', 'completed', 'cancelled', 'archived'],
-      estimate: ['draft', 'internal_review', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'cancelled', 'superseded'],
-      contract: ['draft', 'sent', 'awaiting_signature', 'active', 'expired', 'terminated', 'cancelled', 'archived'],
-      invoice: ['draft', 'issued', 'sent', 'viewed', 'partially_paid', 'paid', 'overdue', 'cancelled', 'credited'],
-      payment: ['pending', 'completed', 'failed', 'refunded', 'partially_refunded', 'cancelled'],
-      transaction: undefined,
-      event: undefined,
-    };
-    return statusOptions[entityType];
-  }
-  if (fieldKey === 'priority') return ['low', 'medium', 'high', 'urgent'];
-  if (fieldKey === 'priceUnit' || fieldKey === 'unit') return ['fixed', 'hourly', 'daily', 'monthly', 'quantity', 'custom'];
-  if (fieldKey === 'method' || fieldKey === 'paymentMethod') return ['bank_transfer', 'card', 'paypal', 'stripe', 'cash', 'cheque', 'other'];
-  if (fieldKey === 'type') {
-    const typeOptions: Partial<Record<ImportEntityType, string[]>> = {
-      contract: ['single_project', 'maintenance', 'collaboration', 'consulting', 'retainer', 'software', 'license', 'custom'],
-      transaction: ['income', 'expense'],
-      event: ['custom', 'meeting', 'client_call', 'project_deadline', 'estimate_due', 'invoice_due', 'payment_due', 'time_off'],
-    };
-    return typeOptions[entityType];
-  }
-  if (fieldKey === 'visibility') return ['internal', 'team', 'client'];
-  return undefined;
 }

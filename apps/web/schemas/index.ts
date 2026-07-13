@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import { normalizeWebsiteUrl } from '@/lib/url';
+
+const optionalUrlSchema = z.preprocess((value) => {
+  return normalizeWebsiteUrl(value);
+}, z.string().url('URL non valido').refine((url) => /^https?:\/\//i.test(url), 'Inserisci un URL http o https').nullable());
 
 export const clientSchema = z.object({
   type: z.enum(['person', 'company']),
@@ -29,6 +34,7 @@ export const projectSchema = z.object({
   budget: z.coerce.number().min(0),
   estimatedHours: z.coerce.number().min(0),
   dueDate: z.string().optional(),
+  websiteUrl: optionalUrlSchema,
   description: z.string().optional(),
 });
 export type ProjectForm = z.infer<typeof projectSchema>;

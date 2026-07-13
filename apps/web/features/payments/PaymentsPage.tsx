@@ -10,6 +10,9 @@ import { StatusBadge } from '@/components/ui/Badge';
 import { LoadingState, EmptyState } from '@/components/ui/States';
 import { useList, useRemove, useHardDelete } from '@/hooks/useEntities';
 import { PaymentFormModal } from './PaymentFormModal';
+import { CreateMethodDialog } from '@/features/import/CreateMethodDialog';
+import { ContextualMarkdownImportDialog } from '@/features/import/ContextualMarkdownImportDialog';
+import type { ResolvedImport } from '@/features/import/contextualImport';
 import { syncInvoiceStatus } from '@/services/paymentService';
 import { voidInstallmentCashflow, voidPaymentCashflow } from '@/services/cashflowSync';
 import { useQueryClient } from '@tanstack/react-query';
@@ -35,7 +38,10 @@ export default function PaymentsPage() {
   const qc = useQueryClient();
   const can = useAuth((s) => s.can);
   const [params, setParams] = useSearchParams();
-  const [open, setOpen] = useState(params.get('new') === '1');
+  const [chooserOpen, setChooserOpen] = useState(params.get('new') === '1');
+  const [open, setOpen] = useState(false);
+  const [markdownOpen, setMarkdownOpen] = useState(false);
+  const [defaults, setDefaults] = useState<Record<string, unknown> | undefined>();
   const [editing, setEditing] = useState<Payment | null>(null);
 
   const list = (payments ?? []).sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -48,10 +54,25 @@ export default function PaymentsPage() {
   const closeModal = () => {
     setOpen(false);
     setEditing(null);
+    setDefaults(undefined);
     if (params.get('new')) { params.delete('new'); setParams(params, { replace: true }); }
   };
 
-  const openEdit = (p: Payment) => { setEditing(p); setOpen(true); };
+  const openEdit = (p: Payment) => { setEditing(p); setDefaults(undefined); setOpen(true); };
+  const openChooser = () => setChooserOpen(true);
+  const closeChooser = () => {
+    setChooserOpen(false);
+    if (params.get('new')) { params.delete('new'); setParams(params, { replace: true }); }
+  };
+  const openManual = () => {
+    setDefaults(undefined);
+    setChooserOpen(false);
+    setOpen(true);
+  };
+  const importMarkdown = (result: ResolvedImport) => {
+    setDefaults(result.defaults);
+    setOpen(true);
+  };
 
   const del = async (p: Payment) => {
     const paymentInstallments = installmentsFor(p.id);
@@ -103,7 +124,7 @@ export default function PaymentsPage() {
         actions={
           <>
             <Button variant="secondary" onClick={() => exportToCSV('pagamenti', list.map((p) => ({ data: p.date, cliente: clientName(p.clientId), fattura: invNumber(p.invoiceId), importo: p.amount, metodo: p.method, stato: p.status })))}><Download className="h-4 w-4" /> CSV</Button>
-            {can('payments.manage') && <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Nuovo pagamento</Button>}
+            {can('payments.manage') && <Button onClick={openChooser}><Plus className="h-4 w-4" /> Nuovo pagamento</Button>}
           </>
         }
       />
@@ -113,12 +134,25 @@ export default function PaymentsPage() {
         <MetricCard label="Pagamenti" value={list.length} />
       </div>
       {list.length === 0 ? (
-        <EmptyState title="Nessun pagamento" description="Registra il primo pagamento." action={can('payments.manage') && <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Nuovo pagamento</Button>} />
+        <EmptyState title="Nessun pagamento" description="Registra il primo pagamento." action={can('payments.manage') && <Button onClick={openChooser}><Plus className="h-4 w-4" /> Nuovo pagamento</Button>} />
       ) : (
         <DataTable data={list} columns={columns} onRowClick={openEdit} rowMenu={rowMenu} />
       )}
 
-      <PaymentFormModal open={open} onClose={closeModal} payment={editing} />
+      <CreateMethodDialog
+        open={chooserOpen}
+        onClose={closeChooser}
+        entityLabel="pagamento"
+        title="Nuovo pagamento"
+        description="Come vuoi registrare questo pagamento?"
+        onManual={openManual}
+        onMarkdown={() => {
+          setChooserOpen(false);
+          setMarkdownOpen(true);
+        }}
+      />
+      <ContextualMarkdownImportDialog open={markdownOpen} onClose={() => setMarkdownOpen(false)} entityType="payment" onContinue={importMarkdown} />
+      <PaymentFormModal open={open} onClose={closeModal} payment={editing} defaults={defaults} />
     </div>
   );
 }

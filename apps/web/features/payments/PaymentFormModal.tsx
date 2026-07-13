@@ -17,6 +17,7 @@ const EMPTY = {
   amount: '', method: 'bank_transfer', date: new Date().toISOString().slice(0, 10),
   clientId: '', invoiceId: '', reference: '', status: 'completed', notes: '',
 };
+type PaymentFormState = typeof EMPTY;
 
 interface InstallmentDraft {
   id?: string;
@@ -41,10 +42,12 @@ export function PaymentFormModal({
   open,
   onClose,
   payment,
+  defaults,
 }: {
   open: boolean;
   onClose: () => void;
   payment?: Payment | null;
+  defaults?: Partial<PaymentFormState> & { installments?: InstallmentDraft[] };
 }) {
   const create = useCreate<Payment>('payments');
   const update = useUpdate<Payment>('payments');
@@ -69,7 +72,7 @@ export function PaymentFormModal({
           clientId: payment.clientId ?? '', invoiceId: payment.invoiceId ?? '',
           reference: payment.reference ?? '', status: payment.status, notes: payment.notes ?? '',
         }
-      : EMPTY,
+        : { ...EMPTY, ...defaults },
   );
 
   useEffect(() => {
@@ -84,7 +87,7 @@ export function PaymentFormModal({
             clientId: payment.clientId ?? '', invoiceId: payment.invoiceId ?? '',
             reference: payment.reference ?? '', status: payment.status, notes: payment.notes ?? '',
           }
-        : EMPTY,
+        : { ...EMPTY, ...defaults },
     );
     setMode(existingInstallments.length > 0 ? 'installments' : 'single');
     setInstallments(
@@ -100,9 +103,15 @@ export function PaymentFormModal({
               status: installment.status,
               notes: installment.notes ?? '',
             }))
-        : [emptyInstallment(1)],
+        : defaults?.installments?.length
+          ? defaults.installments.map((installment, index) => ({
+              ...emptyInstallment(index + 1),
+              ...installment,
+              amount: String(installment.amount),
+            }))
+          : [emptyInstallment(1)],
     );
-  }, [allInstallments, open, payment]);
+  }, [allInstallments, defaults, open, payment]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 

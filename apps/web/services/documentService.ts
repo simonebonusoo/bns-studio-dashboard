@@ -33,6 +33,9 @@ export function estimateMarkdown(estimate: Estimate, client?: Client | null) {
   });
   return [
     frontmatter({
+      bns_markdown_version: 1,
+      entity_type: 'estimate',
+      document_title: `Preventivo ${estimate.number}`,
       document_type: 'estimate',
       document_id: estimate.id,
       organization_id: estimate.organizationId,
@@ -65,6 +68,9 @@ export function estimateMarkdown(estimate: Estimate, client?: Client | null) {
 export function contractMarkdown(contract: Contract, client?: Client | null, project?: Project | null) {
   return [
     frontmatter({
+      bns_markdown_version: 1,
+      entity_type: 'contract',
+      document_title: contract.title,
       document_type: 'contract',
       document_id: contract.id,
       organization_id: contract.organizationId,

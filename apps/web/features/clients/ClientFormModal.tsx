@@ -31,10 +31,12 @@ export function ClientFormModal({
   open,
   onClose,
   client,
+  defaults,
 }: {
   open: boolean;
   onClose: () => void;
   client?: Client;
+  defaults?: Partial<ClientForm>;
 }) {
   const create = useCreate<Client>('clients');
   const update = useUpdate<Client>('clients');
@@ -48,13 +50,13 @@ export function ClientFormModal({
     formState: { errors, isSubmitting },
   } = useForm<ClientForm>({
     resolver: zodResolver(clientSchema),
-    defaultValues: client ? formValues(client) : { type: 'company', status: 'lead', priority: 'medium' },
+    defaultValues: client ? formValues(client) : { type: 'company', status: 'lead', priority: 'medium', ...defaults },
   });
 
   useEffect(() => {
     if (!open) return;
-    reset(client ? formValues(client) : { type: 'company', status: 'lead', priority: 'medium' });
-  }, [client, open, reset]);
+    reset(client ? formValues(client) : { type: 'company', status: 'lead', priority: 'medium', ...defaults });
+  }, [client, defaults, open, reset]);
 
   const onSubmit = async (values: ClientForm) => {
     try {
