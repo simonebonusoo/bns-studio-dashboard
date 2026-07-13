@@ -65,16 +65,34 @@ function findOptions(hint: ImportRelationshipHint, context: ImportContextData) {
     .map(({ id, label }) => ({ id, label }));
 }
 
+function allOptions(hint: ImportRelationshipHint, context: ImportContextData) {
+  switch (hint.targetType) {
+    case 'client':
+      return context.clients.map((item) => ({ id: item.id, label: item.displayName }));
+    case 'service':
+      return context.services.map((item) => ({ id: item.id, label: item.name }));
+    case 'project':
+      return context.projects.map((item) => ({ id: item.id, label: item.name }));
+    case 'estimate':
+      return context.estimates.map((item) => ({ id: item.id, label: item.number }));
+    case 'invoice':
+      return context.invoices.map((item) => ({ id: item.id, label: item.number }));
+    default:
+      return [];
+  }
+}
+
 export function summarizeRelationships(candidate: ImportCandidate, context: ImportContextData): RelationshipSummary[] {
   return candidate.relationshipHints.map((hint) => {
-    const options = findOptions(hint, context);
-    const selected = hint.resolvedId ?? (options.length === 1 ? options[0].id : undefined);
+    const matches = findOptions(hint, context);
+    const options = matches.length > 0 ? matches : allOptions(hint, context);
+    const selected = hint.resolvedId ?? (matches.length === 1 ? matches[0].id : undefined);
     return {
       field: hint.field,
       label: RELATION_LABELS[hint.field] ?? hint.field,
       value: hint.value,
       options,
-      status: selected ? 'matched' : options.length > 1 ? 'ambiguous' : 'missing',
+      status: selected ? 'matched' : matches.length > 1 ? 'ambiguous' : 'missing',
     };
   });
 }
@@ -112,6 +130,7 @@ export function buildContextualDefaults(
         return {
           type: text(fields.type) || 'company',
           displayName: text(fields.displayName),
+          companyName: text(fields.companyName),
           email: text(fields.email),
           phone: text(fields.phone),
           website: text(fields.website),
@@ -135,6 +154,7 @@ export function buildContextualDefaults(
           contractValue: Number(fields.contractValue ?? 0),
           budget: Number(fields.budget ?? 0),
           estimatedHours: Number(fields.estimatedHours ?? 0),
+          startDate: text(fields.startDate),
           dueDate: text(fields.dueDate),
         };
       case 'estimate':

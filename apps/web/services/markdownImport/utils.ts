@@ -51,6 +51,16 @@ export function sanitizeText(value: unknown) {
   return text;
 }
 
+export function sanitizeMarkdownText(value: unknown) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/javascript:/gi, '')
+    .trim();
+}
+
 export function extractWikiLinks(value: string) {
   return [...value.matchAll(/\[\[([^\]]+)\]\]/g)].map((match) => sanitizeText(match[1] ?? ''));
 }

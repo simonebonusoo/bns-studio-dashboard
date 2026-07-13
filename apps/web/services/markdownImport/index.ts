@@ -12,6 +12,7 @@ export async function analyzeMarkdownFiles(files: Array<{ name: string; content:
 }
 
 export * from './constants';
+export * from './presentation';
 export { detectDuplicates, loadImportContext };
 export * from './types';
 export * from './importExecutor';

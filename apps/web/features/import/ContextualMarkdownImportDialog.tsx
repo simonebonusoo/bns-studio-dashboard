@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react';
-import { CheckCircle2, FileUp, Loader2, Upload, XCircle } from 'lucide-react';
+import { Download, FileUp, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
-import { Field, Select } from '@/components/ui/Input';
+import { MarkdownImportReview } from './MarkdownImportReview';
+import { downloadMarkdownTemplate, templateForEntity } from './markdownTemplates';
 import {
   analyzeMarkdownFiles,
   loadImportContext,
@@ -47,6 +48,7 @@ export function ContextualMarkdownImportDialog({
   const [context, setContext] = useState<ImportContextData | null>(null);
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [fileName, setFileName] = useState('');
+  const template = templateForEntity(entityType);
 
   const reset = () => {
     setStep('pick');
@@ -110,6 +112,10 @@ export function ContextualMarkdownImportDialog({
       toast.error('Esiste già un record simile: apri il dettaglio e aggiornalo manualmente.');
       return;
     }
+    if (hasInstallmentTotalMismatch(candidate)) {
+      toast.error("Il totale delle rate non coincide con l'importo del pagamento.");
+      return;
+    }
     const resolved = applyRelationshipSelection(candidate, selections);
     onContinue(buildContextualDefaults(entityType, resolved, context));
     close();
@@ -120,20 +126,21 @@ export function ContextualMarkdownImportDialog({
     candidate?.duplicateStatus !== undefined
     && candidate.duplicateStatus !== 'new'
     && candidate.duplicateStatus !== 'invalid'
-  );
+  ) || (candidate ? hasInstallmentTotalMismatch(candidate) : false);
 
   return (
     <Modal
       open={open}
       onClose={close}
-      title={`Importa Markdown ${ENTITY_LABELS[entityType]}`}
-      description="Import contestuale: verrà creata una sola entità e i dati precompileranno il form esistente."
-      size="lg"
+      title={step === 'review' ? 'Anteprima importazione' : `Importa Markdown ${ENTITY_LABELS[entityType]}`}
+      description={step === 'review' ? 'Controlla e correggi i dati estratti prima di continuare.' : 'Import contestuale: verrà creata una sola entità e i dati precompileranno il form esistente.'}
+      size="xl"
       footer={
         step === 'review' ? (
           <>
             <Button variant="ghost" onClick={close}>Annulla</Button>
-            <Button onClick={continueToForm} disabled={hasBlockingError}>Continua nel form</Button>
+            <Button variant="secondary" onClick={reset}>Indietro</Button>
+            <Button onClick={continueToForm} disabled={hasBlockingError}>Continua</Button>
           </>
         ) : undefined
       }
@@ -150,6 +157,13 @@ export function ContextualMarkdownImportDialog({
               event.currentTarget.value = '';
             }}
           />
+          {template && (
+            <div className="flex justify-end">
+              <Button variant="secondary" onClick={() => void downloadMarkdownTemplate(template)}>
+                <Download className="h-4 w-4" /> Scarica modello {template.label}
+              </Button>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -172,59 +186,14 @@ export function ContextualMarkdownImportDialog({
 
       {step === 'review' && candidate && (
         <div className="space-y-4">
-          <Card>
-            <CardHeader title="Preview dati estratti" subtitle={fileName} />
-            <dl className="grid gap-3 p-4 text-sm sm:grid-cols-2">
-              {Object.entries(candidate.normalizedFields).slice(0, 10).map(([key, value]) => (
-                <div key={key} className="min-w-0 rounded-lg bg-surface-2 px-3 py-2">
-                  <dt className="text-xs font-medium uppercase tracking-wide text-fg-faint">{key}</dt>
-                  <dd className="mt-1 truncate text-fg">{Array.isArray(value) ? `${value.length} elementi` : String(value ?? '—')}</dd>
-                </div>
-              ))}
-            </dl>
-          </Card>
-
-          <Card>
-            <CardHeader title="Review collegamenti" subtitle="I record collegati vengono solo cercati, non creati automaticamente." />
-            <div className="space-y-3 p-4">
-              {summaries.length === 0 && <p className="text-sm text-fg-subtle">Nessun collegamento richiesto dal Markdown.</p>}
-              {summaries.map((summary) => (
-                <div key={summary.field} className="rounded-xl border border-border p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium">{summary.label}</p>
-                      <p className="text-xs text-fg-subtle">{summary.value}</p>
-                    </div>
-                    <span className={`inline-flex items-center gap-1 text-xs font-medium ${summary.status === 'matched' ? 'text-success' : summary.status === 'ambiguous' ? 'text-warning' : 'text-danger'}`}>
-                      {summary.status === 'matched' ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                      {summary.status === 'matched' ? 'Trovato' : summary.status === 'ambiguous' ? 'Da scegliere' : 'Non trovato'}
-                    </span>
-                  </div>
-                  {summary.options.length > 1 && (
-                    <Field label="Seleziona corrispondenza" className="mt-3">
-                      <Select value={selections[summary.field] ?? ''} onChange={(event) => setSelections((current) => ({ ...current, [summary.field]: event.target.value }))}>
-                        <option value="">—</option>
-                        {summary.options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-                      </Select>
-                    </Field>
-                  )}
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {candidate.warnings.length > 0 && (
-            <Card>
-              <CardHeader title="Avvisi" />
-              <div className="space-y-2 p-4">
-                {candidate.warnings.map((warning, index) => (
-                  <p key={`${warning.code}-${index}`} className={warning.level === 'error' ? 'text-sm text-danger' : 'text-sm text-warning'}>
-                    {warning.message}
-                  </p>
-                ))}
-              </div>
-            </Card>
-          )}
+          <p className="text-xs text-fg-subtle">File selezionato: {fileName}</p>
+          <MarkdownImportReview
+            candidate={candidate}
+            relationshipSummaries={summaries}
+            selections={selections}
+            onRelationshipChange={(field, id) => setSelections((current) => ({ ...current, [field]: id }))}
+            onChange={(normalizedFields) => setCandidate((current) => current ? { ...current, normalizedFields } : current)}
+          />
 
           {candidate.duplicateStatus !== 'new' && candidate.duplicateStatus !== 'invalid' && (
             <Card>
@@ -255,4 +224,11 @@ export function ContextualMarkdownImportDialog({
       )}
     </Modal>
   );
+}
+
+function hasInstallmentTotalMismatch(candidate: ImportCandidate) {
+  if (candidate.entityType !== 'payment' || !Array.isArray(candidate.normalizedFields.installments) || candidate.normalizedFields.installments.length === 0) return false;
+  const amount = Number(candidate.normalizedFields.amount ?? 0);
+  const total = candidate.normalizedFields.installments.reduce((sum, installment) => sum + Number((installment as Record<string, unknown>).amount ?? 0), 0);
+  return Math.abs(amount - total) > 0.005;
 }
