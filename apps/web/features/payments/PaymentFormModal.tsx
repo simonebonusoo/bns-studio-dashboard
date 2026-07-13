@@ -113,6 +113,7 @@ export function PaymentFormModal({
   const installmentTotal = round2(installments.reduce((sum, installment) => sum + (Number(installment.amount) || 0), 0));
   const amount = Number(form.amount) || 0;
   const installmentDelta = round2(amount - installmentTotal);
+  const allocationLabel = installmentDelta < 0 ? 'In eccesso' : 'Da allocare';
 
   const afterChange = async (invoiceId?: string | null, prevInvoiceId?: string | null) => {
     await syncInvoiceStatus(invoiceId);
@@ -192,7 +193,10 @@ export function PaymentFormModal({
   const del = async () => {
     if (!payment) return;
     await voidPaymentCashflow(payment.id);
-    await Promise.all(paymentInstallments.map((installment) => hardDeleteInstallment.mutateAsync(installment.id)));
+    await Promise.all(paymentInstallments.map(async (installment) => {
+      await voidInstallmentCashflow(installment.id);
+      await hardDeleteInstallment.mutateAsync(installment.id);
+    }));
     await remove.mutateAsync(payment.id);
     await afterChange(null, payment.invoiceId);
     toast.success('Pagamento eliminato');
@@ -227,6 +231,7 @@ export function PaymentFormModal({
         open={open}
         onClose={onClose}
         title={editing ? 'Modifica pagamento' : 'Registra pagamento'}
+        size="lg"
         footer={
           <div className="flex w-full items-center justify-between">
             {editing ? (
@@ -293,18 +298,35 @@ export function PaymentFormModal({
                 <div className="text-sm">
                   <p className="font-medium">Piano rate</p>
                   <p className={installmentDelta === 0 ? 'text-fg-subtle' : 'text-danger'}>
-                    Totale rate {formatCurrency(installmentTotal)} · residuo {formatCurrency(installmentDelta)}
+                    Totale rate {formatCurrency(installmentTotal)} · {allocationLabel} {formatCurrency(Math.abs(installmentDelta))}
                   </p>
                 </div>
                 <Button variant="secondary" size="sm" onClick={addInstallment}>Aggiungi rata</Button>
               </div>
               <div className="space-y-2">
                 {installments.map((installment, index) => (
-                  <div key={installment.id ?? index} className="grid grid-cols-[44px_1fr_1fr_118px_auto] items-center gap-2 rounded-lg bg-surface-2 p-2">
-                    <span className="text-sm font-medium">#{installment.installmentNumber}</span>
-                    <Input type="number" step="0.01" value={installment.amount} onChange={(e) => patchInstallment(index, { amount: e.target.value })} />
-                    <Input type="date" value={installment.dueDate} onChange={(e) => patchInstallment(index, { dueDate: e.target.value })} />
+                  <div key={installment.id ?? index} className="grid grid-cols-2 items-center gap-2 rounded-lg bg-surface-2 p-2 sm:grid-cols-[44px_minmax(8rem,1.2fr)_minmax(8rem,1fr)_minmax(7.5rem,0.9fr)_auto]">
+                    <span className="text-sm font-semibold">#{installment.installmentNumber}</span>
+                    <div className="relative min-w-0">
+                      <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-sm font-medium text-fg-subtle">€</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        inputMode="decimal"
+                        aria-label={`Importo rata ${installment.installmentNumber}`}
+                        className="number-input-clean pl-7 tabular-nums"
+                        value={installment.amount}
+                        onChange={(e) => patchInstallment(index, { amount: e.target.value })}
+                      />
+                    </div>
+                    <Input
+                      type="date"
+                      aria-label={`Scadenza rata ${installment.installmentNumber}`}
+                      value={installment.dueDate}
+                      onChange={(e) => patchInstallment(index, { dueDate: e.target.value })}
+                    />
                     <Select
+                      aria-label={`Stato rata ${installment.installmentNumber}`}
                       value={installment.status}
                       onChange={(event) => {
                         const status = event.target.value as PaymentInstallment['status'];
@@ -318,9 +340,9 @@ export function PaymentFormModal({
                       <option value="paid">Pagata</option>
                       <option value="cancelled">Annullata</option>
                     </Select>
-                    <div className="flex gap-1">
+                    <div className="col-span-2 flex justify-end gap-1 sm:col-span-1">
                       {installment.id && installment.status !== 'paid' && (
-                        <Button variant="secondary" size="sm" onClick={() => payInstallment(installment)}>Pagata</Button>
+                        <Button variant="secondary" size="sm" onClick={() => payInstallment(installment)}>Segna pagata</Button>
                       )}
                       <Button variant="ghost" size="sm" onClick={() => removeInstallment(index)}>Rimuovi</Button>
                     </div>
@@ -330,7 +352,7 @@ export function PaymentFormModal({
               {savedSummary && (
                 <div className="grid grid-cols-3 gap-2 text-center text-sm">
                   <div className="rounded-lg bg-surface-2 p-2"><p className="font-semibold">{formatCurrency(savedSummary.paid)}</p><p className="text-xs text-fg-subtle">Pagato</p></div>
-                  <div className="rounded-lg bg-surface-2 p-2"><p className="font-semibold">{formatCurrency(savedSummary.residual)}</p><p className="text-xs text-fg-subtle">Residuo</p></div>
+                  <div className="rounded-lg bg-surface-2 p-2"><p className="font-semibold">{formatCurrency(savedSummary.residual)}</p><p className="text-xs text-fg-subtle">Da incassare</p></div>
                   <div className="rounded-lg bg-surface-2 p-2"><p className="font-semibold">{savedSummary.progress}%</p><p className="text-xs text-fg-subtle">Avanzamento</p></div>
                 </div>
               )}

@@ -68,6 +68,14 @@
   .row-hover {
     @apply transition-colors hover:bg-surface-2;
   }
+  .number-input-clean {
+    appearance: textfield;
+  }
+  .number-input-clean::-webkit-outer-spin-button,
+  .number-input-clean::-webkit-inner-spin-button {
+    appearance: none;
+    margin: 0;
+  }
 }
 
 /* Stampa / esportazione PDF: mostra solo il documento */

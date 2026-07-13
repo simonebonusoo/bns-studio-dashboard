@@ -57,38 +57,40 @@ export function EventFormModal({ draft, onClose }: { draft: EventDraft | null; o
   const existing = draft?.id ? (events ?? []).find((e) => e.id === draft.id) : undefined;
   const editing = !!existing;
 
-  const init = existing ?? {
-    title: '', type: 'meeting' as CalendarEvent['type'], start: draft?.start ?? new Date().toISOString(),
-    end: draft?.end ?? new Date(Date.now() + 36e5).toISOString(), allDay: draft?.allDay ?? false,
-    clientId: '', projectId: '', location: '', meetingLink: '', description: '', attendeeIds: [] as string[],
-    reminderMinutes: 15, visibility: 'internal' as const,
-    recurrence: 'none' as const, recurrenceUntil: '', invitedEmails: [] as string[], notes: '',
-  };
-  const sp = parts(init.start);
-  const ep = parts(init.end);
   const initialForm = useMemo(
-    () => ({
-      title: init.title,
-      type: init.type,
-      startDate: sp.date,
-      startTime: sp.time,
-      endDate: ep.date,
-      endTime: ep.time,
-      allDay: init.allDay,
-      clientId: init.clientId ?? '',
-      projectId: init.projectId ?? '',
-      location: init.location ?? '',
-      meetingLink: init.meetingLink ?? '',
-      description: init.description ?? '',
-      attendeeIds: init.attendeeIds ?? [],
-      reminderMinutes: String(init.reminderMinutes ?? 15),
-      visibility: init.visibility ?? 'internal',
-      recurrence: init.recurrence ?? 'none',
-      recurrenceUntil: init.recurrenceUntil ? parts(init.recurrenceUntil).date : '',
-      invitedEmails: (init.invitedEmails ?? []).join(', '),
-      notes: init.notes ?? '',
-    }),
-    [ep.date, ep.time, init.allDay, init.attendeeIds, init.clientId, init.description, init.invitedEmails, init.location, init.meetingLink, init.notes, init.projectId, init.recurrence, init.recurrenceUntil, init.reminderMinutes, init.title, init.type, init.visibility, sp.date, sp.time],
+    () => {
+      const init = existing ?? {
+        title: '', type: 'meeting' as CalendarEvent['type'], start: draft?.start ?? new Date().toISOString(),
+        end: draft?.end ?? new Date(Date.now() + 36e5).toISOString(), allDay: draft?.allDay ?? false,
+        clientId: '', projectId: '', location: '', meetingLink: '', description: '', attendeeIds: [] as string[],
+        reminderMinutes: 15, visibility: 'internal' as const,
+        recurrence: 'none' as const, recurrenceUntil: '', invitedEmails: [] as string[], notes: '',
+      };
+      const sp = parts(init.start);
+      const ep = parts(init.end);
+      return {
+        title: init.title,
+        type: init.type,
+        startDate: sp.date,
+        startTime: sp.time,
+        endDate: ep.date,
+        endTime: ep.time,
+        allDay: init.allDay,
+        clientId: init.clientId ?? '',
+        projectId: init.projectId ?? '',
+        location: init.location ?? '',
+        meetingLink: init.meetingLink ?? '',
+        description: init.description ?? '',
+        attendeeIds: init.attendeeIds ?? [],
+        reminderMinutes: String(init.reminderMinutes ?? 15),
+        visibility: init.visibility ?? 'internal',
+        recurrence: init.recurrence ?? 'none',
+        recurrenceUntil: init.recurrenceUntil ? parts(init.recurrenceUntil).date : '',
+        invitedEmails: (init.invitedEmails ?? []).join(', '),
+        notes: init.notes ?? '',
+      };
+    },
+    [draft?.allDay, draft?.end, draft?.start, existing],
   );
 
   const [form, setForm] = useState(initialForm);

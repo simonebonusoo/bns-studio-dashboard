@@ -1,6 +1,6 @@
 import { documentTotals, invoiceBalance, round2 } from '@/lib/finance';
 import { repositories } from '@/services/repository';
-import type { Payment, Project } from '@/types';
+import type { Project } from '@/types';
 
 async function loadAll() {
   const [projects, invoices, payments, transactions, services, timeEntries, members, estimates] =
@@ -28,6 +28,7 @@ async function loadAll() {
 }
 
 const monthKey = (value: string) => value.slice(0, 7);
+const localMonthKey = (value: Date) => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}`;
 
 export interface DashboardSummary {
   income: number;
@@ -71,8 +72,8 @@ const STATUS_COLORS: Record<string, string> = {
 export async function getAnalytics(): Promise<Analytics> {
   const data = await loadAll();
 
-  const completedPayments = data.payments.filter((payment: Payment) => payment.status === 'completed');
-  const income = round2(completedPayments.reduce((sum, payment) => sum + payment.amount, 0));
+  const incomeTransactions = data.transactions.filter((transaction) => transaction.type === 'income');
+  const income = round2(incomeTransactions.reduce((sum, transaction) => sum + transaction.amount, 0));
   const expenses = round2(
     data.transactions
       .filter((transaction) => transaction.type === 'expense')
@@ -127,13 +128,13 @@ export async function getAnalytics(): Promise<Analytics> {
   base.setDate(1);
   for (let index = 5; index >= 0; index -= 1) {
     const month = new Date(base.getFullYear(), base.getMonth() - index, 1);
-    months.push(month.toISOString().slice(0, 7));
+    months.push(localMonthKey(month));
   }
 
   const monthly: SeriesPoint[] = months.map((month) => {
-    const monthIncome = completedPayments
-      .filter((payment) => monthKey(payment.date) === month)
-      .reduce((sum, payment) => sum + payment.amount, 0);
+    const monthIncome = incomeTransactions
+      .filter((transaction) => monthKey(transaction.date) === month)
+      .reduce((sum, transaction) => sum + transaction.amount, 0);
     const monthExpenses = data.transactions
       .filter((transaction) => transaction.type === 'expense' && monthKey(transaction.date) === month)
       .reduce((sum, transaction) => sum + transaction.amount, 0);

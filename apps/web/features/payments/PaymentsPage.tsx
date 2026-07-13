@@ -8,10 +8,10 @@ import { DataTable, type Column } from '@/components/tables/DataTable';
 import type { MenuItem } from '@/components/ui/ContextMenu';
 import { StatusBadge } from '@/components/ui/Badge';
 import { LoadingState, EmptyState } from '@/components/ui/States';
-import { useList, useRemove } from '@/hooks/useEntities';
+import { useList, useRemove, useHardDelete } from '@/hooks/useEntities';
 import { PaymentFormModal } from './PaymentFormModal';
 import { syncInvoiceStatus } from '@/services/paymentService';
-import { voidPaymentCashflow } from '@/services/cashflowSync';
+import { voidInstallmentCashflow, voidPaymentCashflow } from '@/services/cashflowSync';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/hooks/useEntities';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -31,6 +31,7 @@ export default function PaymentsPage() {
   const { data: invoices } = useList<Invoice>('invoices');
   const { data: installments } = useList<PaymentInstallment>('paymentInstallments');
   const remove = useRemove('payments');
+  const hardDeleteInstallment = useHardDelete('paymentInstallments');
   const qc = useQueryClient();
   const can = useAuth((s) => s.can);
   const [params, setParams] = useSearchParams();
@@ -53,7 +54,12 @@ export default function PaymentsPage() {
   const openEdit = (p: Payment) => { setEditing(p); setOpen(true); };
 
   const del = async (p: Payment) => {
+    const paymentInstallments = installmentsFor(p.id);
     await voidPaymentCashflow(p.id);
+    await Promise.all(paymentInstallments.map(async (installment) => {
+      await voidInstallmentCashflow(installment.id);
+      await hardDeleteInstallment.mutateAsync(installment.id);
+    }));
     await remove.mutateAsync(p.id);
     await syncInvoiceStatus(p.invoiceId);
     qc.invalidateQueries({ queryKey: ['invoices'] });
@@ -81,7 +87,7 @@ export default function PaymentsPage() {
         const paymentInstallments = installmentsFor(p.id);
         if (paymentInstallments.length === 0) return <span className="text-fg-subtle">Unico</span>;
         const summary = installmentSummary(p, paymentInstallments);
-        return <span className="text-fg-subtle">{paymentInstallments.length} rate · {formatCurrency(summary.residual)} residuo</span>;
+        return <span className="text-fg-subtle">{paymentInstallments.length} rate · {formatCurrency(summary.residual)} da incassare</span>;
       },
     },
     { key: 'status', header: 'Stato', render: (p) => <StatusBadge status={p.status === 'completed' ? 'paid' : p.status} /> },

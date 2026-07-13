@@ -64,6 +64,9 @@ const STATUS_MAP: Record<string, { label: string; tone: Tone }> = {
   at_risk: { label: 'A rischio', tone: 'danger' },
   // fatture / preventivi
   paid: { label: 'Pagata', tone: 'success' },
+  pending: { label: 'In attesa', tone: 'warning' },
+  failed: { label: 'Fallito', tone: 'danger' },
+  refunded: { label: 'Rimborsato', tone: 'neutral' },
   partially_paid: { label: 'Parziale', tone: 'warning' },
   overdue: { label: 'Scaduta', tone: 'danger' },
   issued: { label: 'Emessa', tone: 'info' },
