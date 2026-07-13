@@ -33,16 +33,41 @@ function blankItem(): DocumentLineItem {
   };
 }
 
-function buildInitialState(invoice?: Invoice | null, defaults?: { clientId?: string; projectId?: string }) {
+function buildInitialState(invoice?: Invoice | null, defaults?: Partial<ReturnType<typeof blankInvoiceState>>) {
+  const fallback = blankInvoiceState(defaults);
+  return invoice
+    ? {
+        clientId: invoice.clientId ?? defaults?.clientId ?? '',
+        projectId: invoice.projectId ?? defaults?.projectId ?? '',
+        status: invoice.status,
+        issueDate: invoice.issueDate.slice(0, 10),
+        dueDate: invoice.dueDate?.slice(0, 10) ?? '',
+        paymentMethod: invoice.paymentMethod,
+        notes: invoice.notes ?? '',
+        items: invoice.items?.length ? invoice.items : [blankItem()],
+      }
+    : fallback;
+}
+
+function blankInvoiceState(defaults?: Partial<{
+  clientId: string;
+  projectId: string;
+  status: Invoice['status'];
+  issueDate: string;
+  dueDate: string;
+  paymentMethod: PaymentMethod;
+  notes: string;
+  items: DocumentLineItem[];
+}>) {
   return {
-    clientId: invoice?.clientId ?? defaults?.clientId ?? '',
-    projectId: invoice?.projectId ?? defaults?.projectId ?? '',
-    status: invoice?.status ?? ('draft' as Invoice['status']),
-    issueDate: invoice?.issueDate.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
-    dueDate: invoice?.dueDate?.slice(0, 10) ?? '',
-    paymentMethod: invoice?.paymentMethod ?? ('bank_transfer' as PaymentMethod),
-    notes: invoice?.notes ?? '',
-    items: invoice?.items?.length ? invoice.items : [blankItem()],
+    clientId: defaults?.clientId ?? '',
+    projectId: defaults?.projectId ?? '',
+    status: defaults?.status ?? ('draft' as Invoice['status']),
+    issueDate: defaults?.issueDate ?? new Date().toISOString().slice(0, 10),
+    dueDate: defaults?.dueDate ?? '',
+    paymentMethod: defaults?.paymentMethod ?? ('bank_transfer' as PaymentMethod),
+    notes: defaults?.notes ?? '',
+    items: defaults?.items?.length ? defaults.items : [blankItem()],
   };
 }
 
@@ -56,7 +81,7 @@ export function InvoiceFormModal({
   open: boolean;
   onClose: () => void;
   invoice?: Invoice | null;
-  defaults?: { clientId?: string; projectId?: string };
+  defaults?: Partial<ReturnType<typeof blankInvoiceState>>;
   onSaved?: (invoice: Invoice, mode: 'create' | 'update') => void;
 }) {
   const create = useCreate<Invoice>('invoices');

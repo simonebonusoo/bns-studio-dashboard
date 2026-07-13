@@ -20,15 +20,18 @@ const EMPTY_STATE = {
   notes: '',
   items: [] as DocumentLineItem[],
 };
+type EstimateFormState = typeof EMPTY_STATE;
 
 export function EstimateFormModal({
   open,
   onClose,
   estimate,
+  defaults,
 }: {
   open: boolean;
   onClose: () => void;
   estimate?: Estimate;
+  defaults?: Partial<EstimateFormState>;
 }) {
   const create = useCreate<Estimate>('estimates');
   const update = useUpdate<Estimate>('estimates');
@@ -51,8 +54,8 @@ export function EstimateFormModal({
       });
       return;
     }
-    setForm(EMPTY_STATE);
-  }, [estimate, open]);
+    setForm({ ...EMPTY_STATE, ...defaults });
+  }, [defaults, estimate, open]);
 
   const setField = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
     setForm((current) => ({ ...current, [key]: value }));

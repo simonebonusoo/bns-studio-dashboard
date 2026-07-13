@@ -149,6 +149,48 @@ Totale: €1.800`,
     expect(result.candidates.map((candidate) => candidate.entityType)).toEqual(['client', 'project', 'estimate']);
   });
 
+  it('limita l analisi contestuale al tipo atteso', () => {
+    const parsed = parseMarkdownDocument(
+      'multi.md',
+      `# K9 Pro
+
+## Cliente
+Nome: K9 Security Academy
+
+## Progetto
+Nome progetto: K9 Pro
+Cliente: K9 Security Academy`,
+    );
+
+    const result = analyzeParsedMarkdown([parsed], { expectedEntityType: 'project' });
+    expect(result.candidates.every((candidate) => candidate.entityType === 'project')).toBe(true);
+    expect(result.candidates.some((candidate) => candidate.entityType === 'client')).toBe(false);
+  });
+
+  it('segnala mismatch quando il markdown descrive un altra entita', () => {
+    const parsed = parseMarkdownDocument(
+      'project.md',
+      `## Progetto
+Nome progetto: Kokoro Sito
+Cliente: Kokoro Sushi Roma`,
+    );
+
+    const result = analyzeParsedMarkdown([parsed], { expectedEntityType: 'client' });
+    expect(result.candidates[0]?.duplicateStatus).toBe('invalid');
+    expect(result.candidates[0]?.warnings.some((warning) => warning.code === 'entity_type_mismatch')).toBe(true);
+  });
+
+  it('rimuove enfasi markdown dai valori estratti', () => {
+    const parsed = parseMarkdownDocument(
+      'client.md',
+      `## Cliente
+Nome: **Kokoro Sushi Roma**`,
+    );
+
+    const result = analyzeParsedMarkdown([parsed]);
+    expect(result.candidates[0]?.normalizedFields.displayName).toBe('Kokoro Sushi Roma');
+  });
+
   it('normalizza importi italiani', () => {
     expect(parseItalianNumber('€1.800,00')).toBe(1800);
     expect(parseItalianNumber('1.800 €')).toBe(1800);

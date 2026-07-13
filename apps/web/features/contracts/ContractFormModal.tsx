@@ -51,8 +51,9 @@ const EMPTY_CONTRACT_FORM = {
   paymentTerms: '30 giorni', includedRevisions: '2', terms: '', signedByClient: false, signedByStudio: false,
   pdfName: '', pdfUrl: '',
 };
+type ContractFormState = typeof EMPTY_CONTRACT_FORM;
 
-export function ContractFormModal({ open, onClose, contract }: { open: boolean; onClose: () => void; contract?: Contract | null }) {
+export function ContractFormModal({ open, onClose, contract, defaults }: { open: boolean; onClose: () => void; contract?: Contract | null; defaults?: Partial<ContractFormState> }) {
   const create = useCreate<Contract>('contracts');
   const update = useUpdate<Contract>('contracts');
   const remove = useRemove('contracts');
@@ -77,7 +78,7 @@ export function ContractFormModal({ open, onClose, contract }: { open: boolean; 
           signedByClient: contract.signedByClient, signedByStudio: contract.signedByStudio,
           pdfName: contract.pdfName ?? '', pdfUrl: contract.pdfUrl ?? '',
         }
-      : EMPTY_CONTRACT_FORM,
+      : { ...EMPTY_CONTRACT_FORM, ...defaults },
   );
 
   useEffect(() => {
@@ -96,9 +97,9 @@ export function ContractFormModal({ open, onClose, contract }: { open: boolean; 
             signedByClient: contract.signedByClient, signedByStudio: contract.signedByStudio,
             pdfName: contract.pdfName ?? '', pdfUrl: contract.pdfUrl ?? '',
           }
-        : EMPTY_CONTRACT_FORM,
+        : { ...EMPTY_CONTRACT_FORM, ...defaults },
     );
-  }, [contract, open]);
+  }, [contract, defaults, open]);
 
   const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
 

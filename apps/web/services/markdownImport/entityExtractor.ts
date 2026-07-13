@@ -18,6 +18,7 @@ import {
 } from './utils';
 import type {
   ImportAnalysisResult,
+  ImportAnalysisOptions,
   ImportCandidate,
   ImportEntityType,
   ImportRelationshipHint,
@@ -120,6 +121,58 @@ function resolveStatusWarning(
   return normalized;
 }
 
+function normalizeContractType(value: unknown) {
+  const normalized = normalizeIdentity(String(value ?? ''));
+  const map: Record<string, string> = {
+    'progetto singolo': 'single_project',
+    'single project': 'single_project',
+    manutenzione: 'maintenance',
+    maintenance: 'maintenance',
+    retainer: 'retainer',
+    collaborazione: 'collaboration',
+    collaboration: 'collaboration',
+    consulenza: 'consulting',
+    consulting: 'consulting',
+    software: 'software',
+    licenza: 'license',
+    license: 'license',
+    custom: 'custom',
+    personalizzato: 'custom',
+  };
+  return map[normalized] ?? (normalized || undefined);
+}
+
+function normalizeRecurrence(value: unknown) {
+  const normalized = normalizeIdentity(String(value ?? ''));
+  const map: Record<string, string> = {
+    'una tantum': 'one_time',
+    'one time': 'one_time',
+    mensile: 'monthly',
+    monthly: 'monthly',
+    trimestrale: 'quarterly',
+    quarterly: 'quarterly',
+    semestrale: 'semiannual',
+    semiannual: 'semiannual',
+    annuale: 'annual',
+    annual: 'annual',
+    custom: 'custom',
+  };
+  return map[normalized] ?? undefined;
+}
+
+function normalizeRenewal(value: unknown) {
+  const normalized = normalizeIdentity(String(value ?? ''));
+  const map: Record<string, string> = {
+    nessuno: 'none',
+    none: 'none',
+    manuale: 'manual',
+    manual: 'manual',
+    automatico: 'automatic',
+    automatic: 'automatic',
+  };
+  return map[normalized] ?? undefined;
+}
+
 function normalizeClient(rawFields: Record<string, unknown>, warnings: ImportWarning[]) {
   const displayName = sanitizeText(getField(rawFields, ['name', 'nome', 'cliente', 'nome cliente', 'ragione sociale', 'azienda', 'title']));
   const status = resolveStatusWarning('client', getField(rawFields, ['status', 'stato']), warnings) ?? 'active';
@@ -216,6 +269,7 @@ function buildDocumentItems(rawFields: Record<string, unknown>, warnings: Import
 function normalizeEstimate(rawFields: Record<string, unknown>, warnings: ImportWarning[]) {
   const relationshipHints = [
     relationHint('clientId', 'client', getField(rawFields, ['cliente', 'client'])),
+    relationHint('projectId', 'project', getField(rawFields, ['progetto', 'project'])),
   ].filter(Boolean) as ImportRelationshipHint[];
 
   return {
@@ -248,11 +302,14 @@ function normalizeContract(rawFields: Record<string, unknown>, warnings: ImportW
     normalizedFields: {
       number: sanitizeText(getField(rawFields, ['numero contratto', 'numero', 'number'])) || undefined,
       title: sanitizeText(getField(rawFields, ['titolo', 'title', 'contratto', 'name'])) || 'Contratto importato',
-      type: sanitizeText(getField(rawFields, ['tipo', 'type'])) || 'single_project',
+      type: normalizeContractType(getField(rawFields, ['tipo', 'type', 'tipologia'])) || 'single_project',
       status: resolveStatusWarning('contract', getField(rawFields, ['status', 'stato']), warnings) ?? 'draft',
       value: parseItalianNumber(getField(rawFields, ['valore', 'value', 'totale'])) ?? 0,
       startDate: parseItalianDate(getField(rawFields, ['data inizio', 'start date'])) ?? undefined,
       endDate: parseItalianDate(getField(rawFields, ['data fine', 'end date', 'scadenza'])) ?? undefined,
+      recurrence: normalizeRecurrence(getField(rawFields, ['ricorrenza', 'recurrence'])) ?? 'one_time',
+      billingFrequency: normalizeRecurrence(getField(rawFields, ['billing frequency', 'frequenza economica', 'frequenza fatturazione'])) ?? undefined,
+      renewalType: normalizeRenewal(getField(rawFields, ['rinnovo', 'renewal', 'renewal type'])) ?? 'none',
       paymentTerms: sanitizeText(getField(rawFields, ['payment terms', 'termini pagamento'])) || undefined,
       terms: sanitizeText(getField(rawFields, ['terms', 'termini', 'note'])) || undefined,
       signedByClient: parseBooleanValue(getField(rawFields, ['firmato cliente', 'signed by client'])) ?? false,
@@ -455,14 +512,44 @@ function buildPaymentCandidatesFromTable(section: ParsedMarkdownSection, documen
   return paymentCandidates;
 }
 
-function candidateFromSection(document: ParsedMarkdownFile, section: ParsedMarkdownSection, frontmatterType?: string) {
+function candidateFromSection(document: ParsedMarkdownFile, section: ParsedMarkdownSection, frontmatterType?: string, options: ImportAnalysisOptions = {}) {
   if ((section.heading && normalizeIdentity(section.heading).includes('pagament')) || looksLikePaymentTable(section)) {
     const paymentRows = buildPaymentCandidatesFromTable(section, document, 0.92);
-    if (paymentRows.length > 0) return paymentRows;
+    if (paymentRows.length > 0) {
+      return options.expectedEntityType
+        ? paymentRows.filter((candidate) => candidate.entityType === options.expectedEntityType)
+        : paymentRows;
+    }
   }
 
   const { entityType, confidence, ambiguous } = scoreEntityType(section, frontmatterType);
   if (!entityType || confidence < 0.32) return [];
+  if (options.expectedEntityType && entityType !== options.expectedEntityType) {
+    const rawFields = collectRawFields(section, document);
+    const normalized = normalizeCandidate(options.expectedEntityType, rawFields);
+    const candidate: ImportCandidate = {
+      temporaryId: toTemporaryId(),
+      entityType: options.expectedEntityType,
+      sourceFile: document.fileName,
+      sourceSection: section.heading || document.title,
+      confidence: Math.max(0.2, confidence - 0.35),
+      rawFields,
+      normalizedFields: normalized.normalizedFields,
+      relationshipHints: normalized.relationshipHints,
+      warnings: [
+        ...normalized.warnings,
+        {
+          code: 'entity_type_mismatch',
+          message: `Il Markdown sembra descrivere ${entityType}, ma stai creando ${options.expectedEntityType}.`,
+          level: 'error',
+        },
+      ],
+      duplicateStatus: 'invalid',
+      action: 'skip',
+      importState: 'pending',
+    };
+    return [candidate];
+  }
 
   if (entityType === 'payment') {
     const paymentRows = buildPaymentCandidatesFromTable(section, document, confidence);
@@ -524,14 +611,17 @@ function attachBatchRelationHints(candidates: ImportCandidate[]) {
   });
 }
 
-export function analyzeParsedMarkdown(files: ParsedMarkdownFile[]): ImportAnalysisResult {
+export function analyzeParsedMarkdown(files: ParsedMarkdownFile[], options: ImportAnalysisOptions = {}): ImportAnalysisResult {
   const candidates = files.flatMap((document) => {
     const frontmatterType = sanitizeText(document.frontmatter.bns_type ?? document.frontmatter.type);
     const directDocumentCandidate = frontmatterType
-      ? candidateFromSection(document, document.rootSection, frontmatterType)
+      ? candidateFromSection(document, document.rootSection, frontmatterType, options)
       : [];
-    const sectionCandidates = document.sections.flatMap((section) => candidateFromSection(document, section));
-    return [...directDocumentCandidate, ...sectionCandidates];
+    const sectionCandidates = document.sections.flatMap((section) => candidateFromSection(document, section, undefined, options));
+    const allCandidates = [...directDocumentCandidate, ...sectionCandidates];
+    return options.expectedEntityType
+      ? allCandidates.filter((candidate) => candidate.entityType === options.expectedEntityType)
+      : allCandidates;
   });
 
   attachBatchRelationHints(candidates);

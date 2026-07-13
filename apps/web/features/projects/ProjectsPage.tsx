@@ -10,6 +10,9 @@ import { EmptyState, LoadingState } from '@/components/ui/States';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { ActionMenu } from '@/components/ui/ActionMenu';
 import { ProjectFormModal } from './ProjectFormModal';
+import { CreateMethodDialog } from '@/features/import/CreateMethodDialog';
+import { ContextualMarkdownImportDialog } from '@/features/import/ContextualMarkdownImportDialog';
+import type { ResolvedImport } from '@/features/import/contextualImport';
 import { useHardDelete, useList, useUpdate } from '@/hooks/useEntities';
 import { formatCurrency, formatDate, daysUntil } from '@/lib/format';
 import { getProjectDeleteSafety, hasBlockingDependencies } from '@/services/deleteSafety';
@@ -32,7 +35,10 @@ export default function ProjectsPage() {
   const update = useUpdate<Project>('projects');
   const hardDelete = useHardDelete('projects');
   const [params, setParams] = useSearchParams();
-  const [open, setOpen] = useState(params.get('new') === '1');
+  const [chooserOpen, setChooserOpen] = useState(params.get('new') === '1');
+  const [open, setOpen] = useState(false);
+  const [markdownOpen, setMarkdownOpen] = useState(false);
+  const [defaults, setDefaults] = useState<Record<string, unknown> | undefined>();
   const [editing, setEditing] = useState<Project | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<Project | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
@@ -53,7 +59,22 @@ export default function ProjectsPage() {
   const close = () => {
     setOpen(false);
     setEditing(null);
+    setDefaults(undefined);
     if (params.get('new')) { params.delete('new'); setParams(params, { replace: true }); }
+  };
+  const openChooser = () => setChooserOpen(true);
+  const closeChooser = () => {
+    setChooserOpen(false);
+    if (params.get('new')) { params.delete('new'); setParams(params, { replace: true }); }
+  };
+  const openManual = () => {
+    setDefaults(undefined);
+    setChooserOpen(false);
+    setOpen(true);
+  };
+  const importMarkdown = (result: ResolvedImport) => {
+    setDefaults(result.defaults);
+    setOpen(true);
   };
   const deleteSafety = useMemo(
     () =>
@@ -97,6 +118,7 @@ export default function ProjectsPage() {
             icon: Pencil,
             onClick: () => {
               setEditing(project);
+              setDefaults(undefined);
               setOpen(true);
             },
           },
@@ -127,7 +149,7 @@ export default function ProjectsPage() {
       <PageHeader
         title="Progetti"
         description={`${filtered.length} progetti`}
-        actions={can('projects.write') ? <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Nuovo progetto</Button> : undefined}
+        actions={can('projects.write') ? <Button onClick={openChooser}><Plus className="h-4 w-4" /> Nuovo progetto</Button> : undefined}
       />
 
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -150,7 +172,7 @@ export default function ProjectsPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState title="Nessun progetto" description="Crea il primo progetto per iniziare." action={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Nuovo progetto</Button>} />
+        <EmptyState title="Nessun progetto" description="Crea il primo progetto per iniziare." action={<Button onClick={openChooser}><Plus className="h-4 w-4" /> Nuovo progetto</Button>} />
       ) : view === 'grid' ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((p) => {
@@ -216,7 +238,20 @@ export default function ProjectsPage() {
         </Card>
       )}
 
-      <ProjectFormModal open={open} onClose={close} project={editing ?? undefined} />
+      <CreateMethodDialog
+        open={chooserOpen}
+        onClose={closeChooser}
+        entityLabel="progetto"
+        title="Nuovo progetto"
+        description="Come vuoi creare questo progetto?"
+        onManual={openManual}
+        onMarkdown={() => {
+          setChooserOpen(false);
+          setMarkdownOpen(true);
+        }}
+      />
+      <ContextualMarkdownImportDialog open={markdownOpen} onClose={() => setMarkdownOpen(false)} entityType="project" onContinue={importMarkdown} />
+      <ProjectFormModal open={open} onClose={close} project={editing ?? undefined} defaults={defaults} />
       <ConfirmDialog
         open={Boolean(archiveTarget)}
         onClose={() => setArchiveTarget(null)}

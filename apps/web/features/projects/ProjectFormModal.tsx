@@ -16,10 +16,12 @@ export function ProjectFormModal({
   open,
   onClose,
   project,
+  defaults,
 }: {
   open: boolean;
   onClose: () => void;
   project?: Project;
+  defaults?: Partial<ProjectForm>;
 }) {
   const create = useCreate<Project>('projects');
   const update = useUpdate<Project>('projects');
@@ -49,7 +51,7 @@ export function ProjectFormModal({
           websiteUrl: project.websiteUrl ?? '',
           description: project.description,
         }
-      : { status: 'planned', priority: 'medium', contractValue: 0, budget: 0, estimatedHours: 0 },
+      : { status: 'planned', priority: 'medium', contractValue: 0, budget: 0, estimatedHours: 0, ...defaults },
   });
 
   useEffect(() => {
@@ -69,9 +71,9 @@ export function ProjectFormModal({
             websiteUrl: project.websiteUrl ?? '',
             description: project.description,
           }
-        : { status: 'planned', priority: 'medium', contractValue: 0, budget: 0, estimatedHours: 0 },
+        : { status: 'planned', priority: 'medium', contractValue: 0, budget: 0, estimatedHours: 0, ...defaults },
     );
-  }, [open, project, reset]);
+  }, [defaults, open, project, reset]);
 
   const onSubmit = async (values: ProjectForm) => {
     const payload = {

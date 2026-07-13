@@ -16,6 +16,9 @@ import { getInvoiceDeleteSafety, hasBlockingDependencies } from '@/services/dele
 import { exportToCSV } from '@/utils/csv';
 import { useAuth } from '@/stores/auth';
 import { InvoiceFormModal } from './InvoiceFormModal';
+import { CreateMethodDialog } from '@/features/import/CreateMethodDialog';
+import { ContextualMarkdownImportDialog } from '@/features/import/ContextualMarkdownImportDialog';
+import type { ResolvedImport } from '@/features/import/contextualImport';
 import type { Invoice, Client, Payment } from '@/types';
 import { toast } from 'sonner';
 
@@ -32,7 +35,12 @@ export default function InvoicesPage() {
   const projectFilter = params.get('projectId') || null;
   const clientFilter = params.get('clientId') || null;
   const estimateFilter = params.get('estimateId') || null;
-  const open = params.get('new') === '1' || Boolean(editing);
+  const contextualCreate = Boolean(projectFilter || clientFilter || estimateFilter);
+  const [chooserOpen, setChooserOpen] = useState(params.get('new') === '1' && !contextualCreate);
+  const [manualOpen, setManualOpen] = useState(params.get('new') === '1' && contextualCreate);
+  const [markdownOpen, setMarkdownOpen] = useState(false);
+  const [defaults, setDefaults] = useState<Record<string, unknown> | undefined>();
+  const open = manualOpen || Boolean(editing);
   const list = useMemo(() => {
     const items = invoices ?? [];
     return items.filter((invoice) => {
@@ -99,6 +107,11 @@ export default function InvoicesPage() {
   };
 
   const openCreate = () => {
+    if (contextualCreate) {
+      setManualOpen(true);
+      return;
+    }
+    setChooserOpen(true);
     const next = new URLSearchParams(params);
     next.set('new', '1');
     setParams(next, { replace: true });
@@ -106,10 +119,29 @@ export default function InvoicesPage() {
 
   const closeModal = () => {
     setEditing(null);
+    setManualOpen(false);
+    setDefaults(undefined);
     if (params.get('new') !== '1') return;
     const next = new URLSearchParams(params);
     next.delete('new');
     setParams(next, { replace: true });
+  };
+  const closeChooser = () => {
+    setChooserOpen(false);
+    if (params.get('new') === '1') {
+      const next = new URLSearchParams(params);
+      next.delete('new');
+      setParams(next, { replace: true });
+    }
+  };
+  const openManual = () => {
+    setDefaults(undefined);
+    setChooserOpen(false);
+    setManualOpen(true);
+  };
+  const importMarkdown = (result: ResolvedImport) => {
+    setDefaults(result.defaults);
+    setManualOpen(true);
   };
 
   const clearFilters = () => {
@@ -159,11 +191,24 @@ export default function InvoicesPage() {
         open={open}
         onClose={closeModal}
         invoice={editing}
-        defaults={{ projectId: projectFilter ?? undefined, clientId: clientFilter ?? undefined }}
+        defaults={{ projectId: projectFilter ?? undefined, clientId: clientFilter ?? undefined, ...defaults }}
         onSaved={(invoice, mode) => {
           if (mode === 'create') navigate(`/invoices/${invoice.id}`);
         }}
       />
+      <CreateMethodDialog
+        open={chooserOpen}
+        onClose={closeChooser}
+        entityLabel="fattura"
+        title="Nuova fattura"
+        description="Come vuoi creare questa fattura?"
+        onManual={openManual}
+        onMarkdown={() => {
+          setChooserOpen(false);
+          setMarkdownOpen(true);
+        }}
+      />
+      <ContextualMarkdownImportDialog open={markdownOpen} onClose={() => setMarkdownOpen(false)} entityType="invoice" onContinue={importMarkdown} />
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
