@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { format, isValid, parseISO } from 'date-fns';
 import { projectSchema, type ProjectForm } from '@/schemas';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -44,7 +45,8 @@ export function ProjectFormModal({
           contractValue: project.contractValue,
           budget: project.budget,
           estimatedHours: project.estimatedHours,
-          dueDate: project.dueDate?.slice(0, 10),
+          dueDate: dateInputValue(project.dueDate),
+          websiteUrl: project.websiteUrl ?? '',
           description: project.description,
         }
       : { status: 'planned', priority: 'medium', contractValue: 0, budget: 0, estimatedHours: 0 },
@@ -63,7 +65,8 @@ export function ProjectFormModal({
             contractValue: project.contractValue,
             budget: project.budget,
             estimatedHours: project.estimatedHours,
-            dueDate: project.dueDate?.slice(0, 10),
+            dueDate: dateInputValue(project.dueDate),
+            websiteUrl: project.websiteUrl ?? '',
             description: project.description,
           }
         : { status: 'planned', priority: 'medium', contractValue: 0, budget: 0, estimatedHours: 0 },
@@ -73,7 +76,7 @@ export function ProjectFormModal({
   const onSubmit = async (values: ProjectForm) => {
     const payload = {
       ...values,
-      dueDate: values.dueDate ? new Date(values.dueDate).toISOString() : null,
+      dueDate: dateInputToIso(values.dueDate),
     };
     if (editing && project) {
       await update.mutateAsync({ id: project.id, patch: payload });
@@ -154,10 +157,24 @@ export function ProjectFormModal({
         <Field label="Scadenza">
           <Input type="date" {...register('dueDate')} />
         </Field>
+        <Field label="Sito web" error={errors.websiteUrl?.message} className="sm:col-span-2">
+          <Input type="text" inputMode="url" {...register('websiteUrl')} placeholder="k9securityacademy.it" />
+        </Field>
         <Field label="Descrizione" className="sm:col-span-2">
           <Textarea {...register('description')} />
         </Field>
       </form>
     </Modal>
   );
+}
+
+function dateInputValue(value?: string | null) {
+  if (!value) return undefined;
+  const date = parseISO(value);
+  return isValid(date) ? format(date, 'yyyy-MM-dd') : value.slice(0, 10);
+}
+
+function dateInputToIso(value?: string | null) {
+  if (!value) return null;
+  return new Date(`${value}T12:00:00`).toISOString();
 }

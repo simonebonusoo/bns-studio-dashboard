@@ -153,6 +153,7 @@ export interface Project extends BaseEntity {
   code: string;
   name: string;
   description?: string;
+  websiteUrl?: string | null;
   clientId?: string;
   companyId?: string;
   managerId?: string;

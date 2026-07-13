@@ -369,6 +369,7 @@ const projects: Project[] = [
     health: 'on_track',
     startDate: iso(addDays(now, -48)),
     dueDate: iso(addDays(now, 22)),
+    websiteUrl: 'https://k9securityacademy.it',
     completedAt: null,
     contractValue: 3900,
     budget: 2300,

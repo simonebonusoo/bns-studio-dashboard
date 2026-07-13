@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Pencil, Archive, Trash2, FolderOpen, FileText, Receipt, MessagesSquare, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Pencil, Archive, Trash2, FolderOpen, FileText, Receipt, MessagesSquare, PlayCircle, Globe, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDetail, useHardDelete, useList, useUpdate } from '@/hooks/useEntities';
 import { Card, CardHeader, MetricCard } from '@/components/ui/Card';
@@ -12,6 +12,7 @@ import { ProjectFormModal } from './ProjectFormModal';
 import { projectProfitability } from '@/lib/finance';
 import { formatCurrency, formatDate, formatPercent, formatHours } from '@/lib/format';
 import { getProjectDeleteSafety, hasBlockingDependencies } from '@/services/deleteSafety';
+import { openExternalUrl } from '@/services/externalUrl';
 import { useAuth } from '@/stores/auth';
 import type { CalendarEvent, Client, Comment, Contract, FileItem, Invoice, Milestone, Payment, Project, TimeEntry, Transaction } from '@/types';
 import { toast } from 'sonner';
@@ -60,6 +61,8 @@ export default function ProjectDetailPage() {
   const projectContracts = (contracts ?? []).filter((contract) => contract.projectId === project.id);
   const projectFiles = (files ?? []).filter((file) => file.projectId === project.id);
   const projectUpdates = (comments ?? []).filter((comment) => comment.entityType === 'project' && comment.entityId === project.id);
+  const projectWebsite = project.websiteUrl?.trim() || '';
+  const projectWebsiteDomain = readableDomain(projectWebsite);
   const deleteSafety = getProjectDeleteSafety({
     project,
     milestones: milestones ?? [],
@@ -248,6 +251,12 @@ export default function ProjectDetailPage() {
                 <Row label="Aggiornamenti interni" value={String(projectUpdates.length)} />
               </div>
             </Card>
+            <ProjectWebsiteCard
+              url={projectWebsite}
+              domain={projectWebsiteDomain}
+              onOpen={() => void openExternalUrl(projectWebsite)}
+              onAdd={() => setEdit(true)}
+            />
           </div>
         </div>
       )}
@@ -332,6 +341,64 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
       <span className="text-fg-subtle">{label}</span>
       <span className={strong ? 'font-semibold' : ''}>{value}</span>
     </div>
+  );
+}
+
+function readableDomain(url: string) {
+  if (!url) return '';
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+  }
+}
+
+function ProjectWebsiteCard({
+  url,
+  domain,
+  onOpen,
+  onAdd,
+}: {
+  url: string;
+  domain: string;
+  onOpen: () => void;
+  onAdd: () => void;
+}) {
+  if (url) {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        className="group w-full rounded-card border border-border bg-surface text-left shadow-card transition-colors hover:border-border-strong hover:bg-surface-2"
+        title={url}
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Globe className="h-4 w-4 text-fg-subtle" />
+            <h3 className="truncate text-sm font-semibold text-fg">Sito web</h3>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-fg-subtle transition-colors group-hover:text-fg">
+            Apri sito <ExternalLink className="h-3.5 w-3.5" />
+          </span>
+        </div>
+        <div className="min-w-0 px-5 py-4">
+          <p className="truncate text-sm font-medium text-fg">{domain}</p>
+          <p className="mt-1 truncate text-xs text-fg-subtle">{url}</p>
+        </div>
+      </button>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader title="Sito web" icon={<Globe className="h-4 w-4 text-fg-subtle" />} />
+      <div className="space-y-3 p-4">
+        <p className="text-sm text-fg-subtle">Nessun sito collegato</p>
+        <Button variant="secondary" size="sm" onClick={onAdd}>
+          Aggiungi sito
+        </Button>
+      </div>
+    </Card>
   );
 }
 

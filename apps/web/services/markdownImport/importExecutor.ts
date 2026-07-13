@@ -1,4 +1,5 @@
 import { todayISO } from '@/lib/id';
+import { normalizeWebsiteUrl } from '@/lib/url';
 import { nextContractNumber, nextEstimateNumber, nextInvoiceNumber, nextProjectCode } from '@/services/documentNumbers';
 import { repositories } from '@/services/repository';
 import type {
@@ -111,6 +112,7 @@ async function createProjectPayload(fields: Record<string, unknown>): Promise<Om
     code: String(fields.code || await nextProjectCode()),
     name: String(fields.name ?? ''),
     description: (fields.description as string | undefined) || undefined,
+    websiteUrl: normalizeWebsiteUrl(fields.websiteUrl ?? fields.website),
     clientId: (fields.clientId as string | undefined) || undefined,
     companyId: undefined,
     managerId: undefined,

@@ -177,6 +177,7 @@ function normalizeProject(rawFields: Record<string, unknown>, warnings: ImportWa
       code: sanitizeText(getField(rawFields, ['code', 'codice'])) || undefined,
       name: sanitizeText(getField(rawFields, ['nome progetto', 'progetto', 'project name', 'name', 'title'])),
       description: sanitizeText(getField(rawFields, ['description', 'descrizione', 'note'])) || undefined,
+      websiteUrl: sanitizeText(getField(rawFields, ['website', 'sito', 'url', 'sito web'])) || undefined,
       status: resolveStatusWarning('project', getField(rawFields, ['status', 'stato']), warnings) ?? 'planned',
       priority: normalizePriority(getField(rawFields, ['priority', 'priorita'])) ?? 'medium',
       contractValue: parseItalianNumber(getField(rawFields, ['valore', 'valore contrattuale', 'contract value', 'budget progetto'])) ?? 0,

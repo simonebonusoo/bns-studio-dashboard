@@ -1389,6 +1389,7 @@ export type Database = {
           tags: string[] | null
           target_margin: number | null
           updated_at: string
+          website_url: string | null
         }
         Insert: {
           budget?: number | null
@@ -1417,6 +1418,7 @@ export type Database = {
           tags?: string[] | null
           target_margin?: number | null
           updated_at?: string
+          website_url?: string | null
         }
         Update: {
           budget?: number | null
@@ -1445,6 +1447,7 @@ export type Database = {
           tags?: string[] | null
           target_margin?: number | null
           updated_at?: string
+          website_url?: string | null
         }
         Relationships: [
           {
