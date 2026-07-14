@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Printer, Check, X, FileOutput, Pencil, Trash2, Download, Share2, FileText } from 'lucide-react';
+import { ArrowLeft, Printer, Check, X, FileOutput, Pencil, Trash2, Download, Share2, FileText, Eye } from 'lucide-react';
 import { useDetail, useList, useUpdate, useCreate, useRemove } from '@/hooks/useEntities';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
@@ -13,6 +13,7 @@ import { getEstimateDeleteSafety, hasBlockingDependencies } from '@/services/del
 import { downloadMarkdown, downloadPdf, estimateMarkdown, estimatePdfBlob, sharePdf, upsertMarkdownDocument } from '@/services/documentService';
 import { useAuth } from '@/stores/auth';
 import { EstimateFormModal } from './EstimateFormModal';
+import { usePreview } from '@/components/preview/previewContext';
 import type { Estimate, Client, Invoice, Contract } from '@/types';
 import { toast } from 'sonner';
 
@@ -20,6 +21,7 @@ export default function EstimateDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const can = useAuth((s) => s.can);
+  const preview = usePreview();
   const { data: estimate, isLoading } = useDetail<Estimate>('estimates', id);
   const { data: clients } = useList<Client>('clients');
   const { data: contracts } = useList<Contract>('contracts');
@@ -106,6 +108,7 @@ export default function EstimateDetailPage() {
         </Link>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={estimate.status} />
+          <Button variant="secondary" onClick={() => preview.open({ name: `preventivo-${estimate.number}.pdf`, blob: estimatePdfBlob(estimate, client), mime: 'application/pdf' })}><Eye className="h-4 w-4" /> Anteprima</Button>
           <Button variant="secondary" onClick={() => window.print()}><Printer className="h-4 w-4" /> Stampa / PDF</Button>
           <Button variant="secondary" onClick={downloadEstimatePdf}><Download className="h-4 w-4" /> PDF</Button>
           <Button variant="secondary" onClick={shareEstimatePdf}><Share2 className="h-4 w-4" /> Share</Button>

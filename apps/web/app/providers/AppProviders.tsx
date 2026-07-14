@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
+import { PreviewProvider } from '@/components/preview/PreviewProvider';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -15,8 +16,10 @@ const queryClient = new QueryClient({
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
-      <Toaster position="bottom-right" richColors closeButton />
+      <PreviewProvider>
+        {children}
+        <Toaster position="bottom-right" richColors closeButton />
+      </PreviewProvider>
     </QueryClientProvider>
   );
 }

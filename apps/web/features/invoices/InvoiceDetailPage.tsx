@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Printer, Plus, Pencil, Trash2, Download, Share2 } from 'lucide-react';
+import { ArrowLeft, Printer, Plus, Pencil, Trash2, Download, Share2, Eye } from 'lucide-react';
 import { useDetail, useList, useCreate, useUpdate, useRemove } from '@/hooks/useEntities';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
@@ -15,6 +15,7 @@ import { getInvoiceDeleteSafety, hasBlockingDependencies } from '@/services/dele
 import { syncPaymentCashflow, voidPaymentCashflow } from '@/services/cashflowSync';
 import { useAuth } from '@/stores/auth';
 import { InvoiceFormModal } from './InvoiceFormModal';
+import { usePreview } from '@/components/preview/previewContext';
 import { downloadPdf, invoicePdfBlob, sharePdf } from '@/services/documentService';
 import type { Invoice, Client, Payment } from '@/types';
 import { toast } from 'sonner';
@@ -23,6 +24,7 @@ export default function InvoiceDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const can = useAuth((s) => s.can);
+  const preview = usePreview();
   const { data: invoice, isLoading } = useDetail<Invoice>('invoices', id);
   const { data: clients } = useList<Client>('clients');
   const { data: payments } = useList<Payment>('payments');
@@ -96,6 +98,7 @@ export default function InvoiceDetailPage() {
         </Link>
         <div className="flex items-center gap-2">
           <StatusBadge status={invoice.status} />
+          <Button variant="secondary" onClick={() => preview.open({ name: `fattura-${invoice.number}.pdf`, blob: invoicePdfBlob(invoice, client), mime: 'application/pdf' })}><Eye className="h-4 w-4" /> Anteprima</Button>
           <Button variant="secondary" onClick={() => window.print()}><Printer className="h-4 w-4" /> Stampa / PDF</Button>
           <Button variant="secondary" onClick={downloadInvoicePdf}><Download className="h-4 w-4" /> PDF</Button>
           <Button variant="secondary" onClick={shareInvoicePdf}><Share2 className="h-4 w-4" /> Share</Button>
