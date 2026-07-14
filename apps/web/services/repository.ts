@@ -418,6 +418,8 @@ export const repositories = {
   activityLogs: createRepository('activity_logs', db.activityLogs, APPEND_ONLY),
   markdownImports: createRepository('markdown_imports', db.markdownImports),
   documents: createRepository('documents', db.documents),
+  githubConnections: createRepository('github_connections', db.githubConnections, APPEND_ONLY),
+  projectRepositories: createRepository('project_repositories', db.projectRepositories),
 };
 
 export type RepositoryKey = keyof typeof repositories;

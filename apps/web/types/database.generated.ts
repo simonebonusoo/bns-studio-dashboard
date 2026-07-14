@@ -836,6 +836,66 @@ export type Database = {
           },
         ]
       }
+      github_connections: {
+        Row: {
+          account_avatar_url: string | null
+          account_login: string | null
+          account_type: string | null
+          connected_at: string | null
+          connected_by: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          installation_id: number | null
+          organization_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_avatar_url?: string | null
+          account_login?: string | null
+          account_type?: string | null
+          connected_at?: string | null
+          connected_by?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          installation_id?: number | null
+          organization_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_avatar_url?: string | null
+          account_login?: string | null
+          account_type?: string | null
+          connected_at?: string | null
+          connected_by?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          installation_id?: number | null
+          organization_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "github_connections_connected_by_fkey"
+            columns: ["connected_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "github_connections_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           client_id: string | null
@@ -1365,14 +1425,11 @@ export type Database = {
           id: string
           installment_number: number
           invoice_id: string | null
-          note: string | null
           notes: string | null
           organization_id: string
           paid_at: string | null
-          paid_date: string | null
           payment_id: string | null
           project_id: string | null
-          seq: number
           status: string
           updated_at: string
         }
@@ -1387,14 +1444,11 @@ export type Database = {
           id?: string
           installment_number?: number
           invoice_id?: string | null
-          note?: string | null
           notes?: string | null
           organization_id: string
           paid_at?: string | null
-          paid_date?: string | null
           payment_id?: string | null
           project_id?: string | null
-          seq?: number
           status?: string
           updated_at?: string
         }
@@ -1409,14 +1463,11 @@ export type Database = {
           id?: string
           installment_number?: number
           invoice_id?: string | null
-          note?: string | null
           notes?: string | null
           organization_id?: string
           paid_at?: string | null
-          paid_date?: string | null
           payment_id?: string | null
           project_id?: string | null
-          seq?: number
           status?: string
           updated_at?: string
         }
@@ -1589,6 +1640,88 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      project_repositories: {
+        Row: {
+          created_at: string
+          default_branch: string | null
+          deleted_at: string | null
+          full_name: string
+          html_url: string | null
+          id: string
+          last_pushed_at: string | null
+          linked_by: string | null
+          name: string
+          open_issues: number | null
+          open_pull_requests: number | null
+          organization_id: string
+          owner: string
+          private: boolean
+          project_id: string
+          repo_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_branch?: string | null
+          deleted_at?: string | null
+          full_name: string
+          html_url?: string | null
+          id?: string
+          last_pushed_at?: string | null
+          linked_by?: string | null
+          name: string
+          open_issues?: number | null
+          open_pull_requests?: number | null
+          organization_id: string
+          owner: string
+          private?: boolean
+          project_id: string
+          repo_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_branch?: string | null
+          deleted_at?: string | null
+          full_name?: string
+          html_url?: string | null
+          id?: string
+          last_pushed_at?: string | null
+          linked_by?: string | null
+          name?: string
+          open_issues?: number | null
+          open_pull_requests?: number | null
+          organization_id?: string
+          owner?: string
+          private?: boolean
+          project_id?: string
+          repo_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_repositories_linked_by_fkey"
+            columns: ["linked_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_repositories_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_repositories_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       projects: {
         Row: {
@@ -2505,8 +2638,16 @@ export type Database = {
         Args: { comment_author: string; org: string }
         Returns: boolean
       }
+      can_manage_studio_conversation: {
+        Args: { conversation: string; org: string }
+        Returns: boolean
+      }
       can_read_studio_conversation: {
         Args: { conversation: string; org: string }
+        Returns: boolean
+      }
+      can_read_studio_message: {
+        Args: { message: string; org: string }
         Returns: boolean
       }
       current_member_id: { Args: { org: string }; Returns: string }
@@ -2515,6 +2656,7 @@ export type Database = {
         Returns: boolean
       }
       is_internal_org_member: { Args: { org: string }; Returns: boolean }
+      is_org_admin: { Args: { org: string }; Returns: boolean }
       is_org_member: { Args: { org: string }; Returns: boolean }
       is_studio_conversation_member: {
         Args: { conversation: string; member: string; org: string }
