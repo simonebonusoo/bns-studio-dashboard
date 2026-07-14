@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Check, Save } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardHeader } from '@/components/ui/Card';
+import { GithubSettingsCard } from './GithubSettingsCard';
 import { Button } from '@/components/ui/Button';
 import { Input, Select, Field } from '@/components/ui/Input';
 import { ConfirmDialog } from '@/components/ui/Modal';
@@ -185,6 +186,8 @@ export default function SettingsPage() {
           </Field>
         </div>
       </Card>
+
+      <GithubSettingsCard />
 
       <Card>
         <CardHeader title="Ruolo corrente" subtitle="Permessi applicati alla tua sessione" />
