@@ -447,3 +447,44 @@ export interface DocItem extends BaseEntity {
   tags: string[];
   authorId?: string;
 }
+
+// ─────────────── Integrazione GitHub (§3-4) ───────────────
+
+export interface GithubConnection extends BaseEntity {
+  installationId?: number | null;
+  accountLogin?: string | null;
+  accountType?: string | null;
+  accountAvatarUrl?: string | null;
+  status: 'connecting' | 'connected' | 'error' | 'revoked';
+  errorMessage?: string | null;
+  connectedBy?: string | null;
+  connectedAt?: string | null;
+}
+
+export interface ProjectRepository extends BaseEntity {
+  projectId: string;
+  repoId: number;
+  fullName: string;
+  owner: string;
+  name: string;
+  private: boolean;
+  defaultBranch?: string | null;
+  htmlUrl?: string | null;
+  openIssues?: number | null;
+  openPullRequests?: number | null;
+  lastPushedAt?: string | null;
+  linkedBy?: string | null;
+}
+
+/** Repo restituito da list_repos (non persistito): shape dell'API GitHub. */
+export interface GithubRepo {
+  repoId: number;
+  fullName: string;
+  owner: string;
+  name: string;
+  private: boolean;
+  defaultBranch?: string;
+  htmlUrl?: string;
+  openIssues?: number;
+  lastPushedAt?: string;
+}
