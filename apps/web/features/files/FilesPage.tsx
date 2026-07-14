@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
+  Eye,
   File,
   FileArchive,
   FileText,
@@ -23,6 +24,8 @@ import { useList } from '@/hooks/useEntities';
 import { useUploadFile, useRemoveFile } from '@/hooks/useFiles';
 import { DOCUMENT_CATEGORIES } from './documentCategories';
 import { FileDetailDrawer } from './FileDetailDrawer';
+import { usePreview } from '@/components/preview/previewContext';
+import { fileService } from '@/services/fileService';
 import { useUI } from '@/stores/ui';
 import { cn } from '@/lib/cn';
 import { formatDate } from '@/lib/format';
@@ -47,6 +50,7 @@ export default function FilesPage() {
   const { data: files, isLoading } = useList<FileItem>('files');
   const { data: projects } = useList<Project>('projects');
   const { data: clients } = useList<Client>('clients');
+  const preview = usePreview();
   const upload = useUploadFile();
   const remove = useRemoveFile();
   const filesView = useUI((state) => state.filesView);
@@ -115,7 +119,27 @@ export default function FilesPage() {
     if (fileInput.current) fileInput.current.value = '';
   };
 
+  const previewFile = async (file: FileItem) => {
+    try {
+      const url = await fileService.resolveUrl(file);
+      if (!url) {
+        toast.error('Anteprima non disponibile per questo file');
+        return;
+      }
+      const isMarkdown = /\.(md|markdown)$/i.test(file.name) || (file.mime ?? '').includes('markdown');
+      if (isMarkdown) {
+        const text = await (await fetch(url)).text();
+        preview.open({ name: file.name, markdown: text });
+      } else {
+        preview.open({ name: file.name, url, mime: file.mime ?? undefined });
+      }
+    } catch {
+      toast.error("Impossibile aprire l'anteprima");
+    }
+  };
+
   const fileMenu = (file: FileItem): MenuItem[] => [
+    { label: 'Anteprima rapida', icon: Eye, onClick: () => previewFile(file) },
     { label: 'Apri', icon: FileText, onClick: () => setOpenId(file.id) },
     {
       label: 'Elimina',
@@ -268,10 +292,29 @@ export default function FilesPage() {
           <div className="grid max-h-full content-start gap-3 overflow-y-auto overscroll-contain pr-1 sm:grid-cols-2 xl:grid-cols-3">
             {filtered.map((file) => (
               <ContextMenu key={file.id} items={fileMenu(file)}>
-                <Card onClick={() => setOpenId(file.id)} className="press flex cursor-pointer flex-col gap-4 p-4 transition-colors hover:border-border-strong">
+                <Card
+                  onClick={() => setOpenId(file.id)}
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    // Quick Look: Spazio apre l'anteprima, Invio apre il dettaglio.
+                    if (event.key === ' ') { event.preventDefault(); previewFile(file); }
+                    else if (event.key === 'Enter') setOpenId(file.id);
+                  }}
+                  className="group press flex cursor-pointer flex-col gap-4 p-4 outline-none transition-colors hover:border-border-strong focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/30"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-2">{iconFor(file.mime)}</div>
-                    <Badge tone={file.clientVisible ? 'info' : 'neutral'}>{file.clientVisible ? 'Cliente' : 'Interno'}</Badge>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={(event) => { event.stopPropagation(); previewFile(file); }}
+                        aria-label="Anteprima rapida"
+                        title="Anteprima (Spazio)"
+                        className="press rounded-md p-1.5 text-fg-subtle opacity-0 transition-opacity hover:bg-surface-2 hover:text-fg group-hover:opacity-100 focus-visible:opacity-100"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <Badge tone={file.clientVisible ? 'info' : 'neutral'}>{file.clientVisible ? 'Cliente' : 'Interno'}</Badge>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <p className="truncate text-sm font-medium">{file.name}</p>
