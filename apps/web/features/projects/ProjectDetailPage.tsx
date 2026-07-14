@@ -9,6 +9,7 @@ import { StatusBadge } from '@/components/ui/Badge';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { ProjectFormModal } from './ProjectFormModal';
+import { ProjectRepositories } from './ProjectRepositories';
 import { projectProfitability } from '@/lib/finance';
 import { formatCurrency, formatDate, formatPercent, formatHours } from '@/lib/format';
 import { getProjectDeleteSafety, hasBlockingDependencies } from '@/services/deleteSafety';
@@ -228,6 +229,8 @@ export default function ProjectDetailPage() {
                 />
               </div>
             </Card>
+
+            <ProjectRepositories projectId={project.id} />
           </div>
           <div className="space-y-4">
             {showFinance && (

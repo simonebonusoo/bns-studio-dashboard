@@ -30,6 +30,8 @@ import type {
   StudioMessageSave,
   StudioConversationRead,
   StudioMessageAttachment,
+  GithubConnection,
+  ProjectRepository,
 } from '@/types';
 
 /** Utente demo persistito localmente (solo demo — nessuna password reale in produzione). */
@@ -77,6 +79,8 @@ export class BnsDatabase extends Dexie {
   studioMessageSaves!: Table<StudioMessageSave, string>;
   studioConversationReads!: Table<StudioConversationRead, string>;
   studioMessageAttachments!: Table<StudioMessageAttachment, string>;
+  githubConnections!: Table<GithubConnection, string>;
+  projectRepositories!: Table<ProjectRepository, string>;
   meta!: Table<{ key: string; value: unknown }, string>;
 
   constructor() {
@@ -114,6 +118,12 @@ export class BnsDatabase extends Dexie {
       studioConversationReads: 'id, organizationId, conversationId, memberId',
       studioMessageAttachments: 'id, organizationId, messageId, fileId',
       meta: 'key',
+    });
+
+    // v6 (1.1.x): integrazione GitHub (§3-4).
+    this.version(6).stores({
+      githubConnections: 'id, organizationId, status',
+      projectRepositories: 'id, organizationId, projectId, repoId',
     });
   }
 }
