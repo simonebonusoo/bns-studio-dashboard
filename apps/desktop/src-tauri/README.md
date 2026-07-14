@@ -1,8 +1,8 @@
-# BNS Studio OS — Desktop (Tauri) — PREDISPOSTO
+# BNS Studio OS — Desktop (Tauri)
 
 Questa cartella prepara l'app desktop con **Tauri 2** riusando **la stessa build web** (`dist/`), senza modificare la versione browser.
 
-> **Stato: predisposto.** I file di configurazione ci sono; per compilare il binario desktop servono il toolchain Rust e la CLI Tauri (non installati di default per non appesantire la build web).
+> **Stato: build verificata.** Il comando workspace genera `.app` e `.dmg`; signing e notarization richiedono credenziali Apple Developer.
 
 ## Requisiti
 
@@ -13,9 +13,12 @@ Questa cartella prepara l'app desktop con **Tauri 2** riusando **la stessa build
 ## Comandi
 
 ```bash
-npx tauri dev     # avvia l'app desktop (usa `npm run dev` come frontend)
-npx tauri build   # genera l'eseguibile (usa `npm run build`)
+npm run dev:desktop     # avvia l'app desktop
+npm run build:desktop   # genera BnsStudio.app e il DMG
+npm run notarize:mac    # firma/notarizza con credenziali Apple Developer
 ```
+
+Vedi `docs/DESKTOP_DISTRIBUTION.md` per le variabili richieste da Apple Notary Service.
 
 ## Come resta compatibile con il web
 

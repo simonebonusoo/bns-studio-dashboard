@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, LayoutDashboard, Users, Briefcase, Receipt,
   FileText, BarChart3, Clock, Settings, UserPlus, FolderPlus, Calendar,
-  CornerDownLeft, type LucideIcon,
+  CornerDownLeft, MessageSquare, type LucideIcon,
 } from 'lucide-react';
 import { useUI } from '@/stores/ui';
 import { loadCommandPaletteEntities } from '@/services/search';
@@ -23,6 +23,7 @@ const NAV_COMMANDS: Command[] = [
   { id: 'n-cli', label: 'Clienti', section: 'Vai a', icon: Users, to: '/clients', keywords: 'crm' },
   { id: 'n-prj', label: 'Progetti', section: 'Vai a', icon: Briefcase, to: '/projects' },
   { id: 'n-cal', label: 'Calendario', section: 'Vai a', icon: Calendar, to: '/calendar', keywords: 'agenda eventi' },
+  { id: 'n-studio', label: 'Studio', section: 'Vai a', icon: MessageSquare, to: '/studio', keywords: 'chat canali messaggi collaborazione' },
   { id: 'n-time', label: 'Time Tracking', section: 'Vai a', icon: Clock, to: '/time', keywords: 'ore timesheet' },
   { id: 'n-est', label: 'Preventivi', section: 'Vai a', icon: FileText, to: '/estimates' },
   { id: 'n-inv', label: 'Fatture', section: 'Vai a', icon: Receipt, to: '/invoices' },

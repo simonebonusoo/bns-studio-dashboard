@@ -72,10 +72,14 @@ export type Database = {
           description: string | null
           end_at: string
           id: string
+          invited_emails: string[]
           location: string | null
           meeting_link: string | null
+          notes: string | null
           organization_id: string
           project_id: string | null
+          recurrence: string
+          recurrence_until: string | null
           reminder_minutes: number | null
           start_at: string
           title: string
@@ -92,10 +96,14 @@ export type Database = {
           description?: string | null
           end_at: string
           id?: string
+          invited_emails?: string[]
           location?: string | null
           meeting_link?: string | null
+          notes?: string | null
           organization_id: string
           project_id?: string | null
+          recurrence?: string
+          recurrence_until?: string | null
           reminder_minutes?: number | null
           start_at: string
           title: string
@@ -112,10 +120,14 @@ export type Database = {
           description?: string | null
           end_at?: string
           id?: string
+          invited_emails?: string[]
           location?: string | null
           meeting_link?: string | null
+          notes?: string | null
           organization_id?: string
           project_id?: string | null
+          recurrence?: string
+          recurrence_until?: string | null
           reminder_minutes?: number | null
           start_at?: string
           title?: string
@@ -383,6 +395,9 @@ export type Database = {
       }
       contracts: {
         Row: {
+          auto_renew: boolean
+          billing_cycle: string | null
+          billing_frequency: string
           client_id: string | null
           created_at: string
           deleted_at: string | null
@@ -397,6 +412,9 @@ export type Database = {
           pdf_name: string | null
           pdf_url: string | null
           project_id: string | null
+          recurrence: string
+          renewal_date: string | null
+          renewal_type: string
           signed_by_client: boolean | null
           signed_by_studio: boolean | null
           start_date: string | null
@@ -408,6 +426,9 @@ export type Database = {
           value: number | null
         }
         Insert: {
+          auto_renew?: boolean
+          billing_cycle?: string | null
+          billing_frequency?: string
           client_id?: string | null
           created_at?: string
           deleted_at?: string | null
@@ -422,6 +443,9 @@ export type Database = {
           pdf_name?: string | null
           pdf_url?: string | null
           project_id?: string | null
+          recurrence?: string
+          renewal_date?: string | null
+          renewal_type?: string
           signed_by_client?: boolean | null
           signed_by_studio?: boolean | null
           start_date?: string | null
@@ -433,6 +457,9 @@ export type Database = {
           value?: number | null
         }
         Update: {
+          auto_renew?: boolean
+          billing_cycle?: string | null
+          billing_frequency?: string
           client_id?: string | null
           created_at?: string
           deleted_at?: string | null
@@ -447,6 +474,9 @@ export type Database = {
           pdf_name?: string | null
           pdf_url?: string | null
           project_id?: string | null
+          recurrence?: string
+          renewal_date?: string | null
+          renewal_type?: string
           signed_by_client?: boolean | null
           signed_by_studio?: boolean | null
           start_date?: string | null
@@ -493,43 +523,70 @@ export type Database = {
           author_id: string | null
           client_id: string | null
           content: string | null
+          contract_id: string | null
           created_at: string
           deleted_at: string | null
+          file_id: string | null
           id: string
+          invoice_id: string | null
+          markdown: string | null
+          metadata: Json
           organization_id: string
           project_id: string | null
+          representation: string
+          source_entity_id: string | null
+          source_entity_type: string | null
           tags: string[] | null
           title: string
           type: string | null
           updated_at: string
+          version: number
         }
         Insert: {
           author_id?: string | null
           client_id?: string | null
           content?: string | null
+          contract_id?: string | null
           created_at?: string
           deleted_at?: string | null
+          file_id?: string | null
           id?: string
+          invoice_id?: string | null
+          markdown?: string | null
+          metadata?: Json
           organization_id: string
           project_id?: string | null
+          representation?: string
+          source_entity_id?: string | null
+          source_entity_type?: string | null
           tags?: string[] | null
           title: string
           type?: string | null
           updated_at?: string
+          version?: number
         }
         Update: {
           author_id?: string | null
           client_id?: string | null
           content?: string | null
+          contract_id?: string | null
           created_at?: string
           deleted_at?: string | null
+          file_id?: string | null
           id?: string
+          invoice_id?: string | null
+          markdown?: string | null
+          metadata?: Json
           organization_id?: string
           project_id?: string | null
+          representation?: string
+          source_entity_id?: string | null
+          source_entity_type?: string | null
           tags?: string[] | null
           title?: string
           type?: string | null
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -544,6 +601,27 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
           {
@@ -659,8 +737,12 @@ export type Database = {
           client_visible: boolean | null
           created_at: string
           deleted_at: string | null
+          document_category: string
+          entity_id: string | null
+          entity_type: string | null
           folder: string | null
           id: string
+          metadata: Json
           mime: string | null
           name: string
           organization_id: string
@@ -677,8 +759,12 @@ export type Database = {
           client_visible?: boolean | null
           created_at?: string
           deleted_at?: string | null
+          document_category?: string
+          entity_id?: string | null
+          entity_type?: string | null
           folder?: string | null
           id?: string
+          metadata?: Json
           mime?: string | null
           name: string
           organization_id: string
@@ -695,8 +781,12 @@ export type Database = {
           client_visible?: boolean | null
           created_at?: string
           deleted_at?: string | null
+          document_category?: string
+          entity_id?: string | null
+          entity_type?: string | null
           folder?: string | null
           id?: string
+          metadata?: Json
           mime?: string | null
           name?: string
           organization_id?: string
@@ -910,10 +1000,13 @@ export type Database = {
       members: {
         Row: {
           avatar_color: string | null
+          avatar_url: string | null
+          bio: string | null
           client_rate: number | null
           collaboration_type: string | null
           created_at: string
           deleted_at: string | null
+          display_name: string | null
           email: string
           first_name: string
           id: string
@@ -922,6 +1015,7 @@ export type Database = {
           joined_at: string | null
           last_name: string
           organization_id: string
+          phone: string | null
           profile_id: string | null
           role: Database["public"]["Enums"]["member_role"]
           skills: string[] | null
@@ -931,10 +1025,13 @@ export type Database = {
         }
         Insert: {
           avatar_color?: string | null
+          avatar_url?: string | null
+          bio?: string | null
           client_rate?: number | null
           collaboration_type?: string | null
           created_at?: string
           deleted_at?: string | null
+          display_name?: string | null
           email: string
           first_name: string
           id?: string
@@ -943,6 +1040,7 @@ export type Database = {
           joined_at?: string | null
           last_name: string
           organization_id: string
+          phone?: string | null
           profile_id?: string | null
           role?: Database["public"]["Enums"]["member_role"]
           skills?: string[] | null
@@ -952,10 +1050,13 @@ export type Database = {
         }
         Update: {
           avatar_color?: string | null
+          avatar_url?: string | null
+          bio?: string | null
           client_rate?: number | null
           collaboration_type?: string | null
           created_at?: string
           deleted_at?: string | null
+          display_name?: string | null
           email?: string
           first_name?: string
           id?: string
@@ -964,6 +1065,7 @@ export type Database = {
           joined_at?: string | null
           last_name?: string
           organization_id?: string
+          phone?: string | null
           profile_id?: string | null
           role?: Database["public"]["Enums"]["member_role"]
           skills?: string[] | null
@@ -1251,6 +1353,118 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_installments: {
+        Row: {
+          amount: number
+          client_id: string | null
+          contract_id: string | null
+          created_at: string
+          currency: string
+          deleted_at: string | null
+          due_date: string | null
+          id: string
+          installment_number: number
+          invoice_id: string | null
+          note: string | null
+          notes: string | null
+          organization_id: string
+          paid_at: string | null
+          paid_date: string | null
+          payment_id: string | null
+          project_id: string | null
+          seq: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          client_id?: string | null
+          contract_id?: string | null
+          created_at?: string
+          currency?: string
+          deleted_at?: string | null
+          due_date?: string | null
+          id?: string
+          installment_number?: number
+          invoice_id?: string | null
+          note?: string | null
+          notes?: string | null
+          organization_id: string
+          paid_at?: string | null
+          paid_date?: string | null
+          payment_id?: string | null
+          project_id?: string | null
+          seq?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string | null
+          contract_id?: string | null
+          created_at?: string
+          currency?: string
+          deleted_at?: string | null
+          due_date?: string | null
+          id?: string
+          installment_number?: number
+          invoice_id?: string | null
+          note?: string | null
+          notes?: string | null
+          organization_id?: string
+          paid_at?: string | null
+          paid_date?: string | null
+          payment_id?: string | null
+          project_id?: string | null
+          seq?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_installments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_installments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_installments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_installments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_installments_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_installments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -1337,27 +1551,42 @@ export type Database = {
       profiles: {
         Row: {
           avatar_color: string | null
+          avatar_url: string | null
+          bio: string | null
           created_at: string
+          display_name: string | null
           email: string
           first_name: string | null
           id: string
           last_name: string | null
+          phone: string | null
+          updated_at: string
         }
         Insert: {
           avatar_color?: string | null
+          avatar_url?: string | null
+          bio?: string | null
           created_at?: string
+          display_name?: string | null
           email: string
           first_name?: string | null
           id: string
           last_name?: string | null
+          phone?: string | null
+          updated_at?: string
         }
         Update: {
           avatar_color?: string | null
+          avatar_url?: string | null
+          bio?: string | null
           created_at?: string
+          display_name?: string | null
           email?: string
           first_name?: string | null
           id?: string
           last_name?: string | null
+          phone?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1548,6 +1777,419 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_conversation_members: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          joined_at: string
+          member_id: string
+          organization_id: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          joined_at?: string
+          member_id: string
+          organization_id: string
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          joined_at?: string
+          member_id?: string
+          organization_id?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_conversation_members_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "studio_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_conversation_members_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_conversation_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_conversation_reads: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          last_read_at: string
+          member_id: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          last_read_at?: string
+          member_id: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          last_read_at?: string
+          member_id?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_conversation_reads_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "studio_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_conversation_reads_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_conversation_reads_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_conversations: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          id: string
+          is_private: boolean
+          name: string
+          organization_id: string
+          project_id: string | null
+          slug: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          is_private?: boolean
+          name: string
+          organization_id: string
+          project_id?: string | null
+          slug: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          is_private?: boolean
+          name?: string
+          organization_id?: string
+          project_id?: string | null
+          slug?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_conversations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_conversations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_conversations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_message_attachments: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          file_id: string
+          id: string
+          message_id: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          file_id: string
+          id?: string
+          message_id: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          file_id?: string
+          id?: string
+          message_id?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_message_attachments_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_message_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "studio_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_message_attachments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_message_reactions: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          emoji: string
+          id: string
+          member_id: string
+          message_id: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          emoji: string
+          id?: string
+          member_id: string
+          message_id: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          emoji?: string
+          id?: string
+          member_id?: string
+          message_id?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_message_reactions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "studio_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_message_reactions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_message_saves: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          id: string
+          member_id: string
+          message_id: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          member_id: string
+          message_id: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          member_id?: string
+          message_id?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_message_saves_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_message_saves_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "studio_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_message_saves_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_messages: {
+        Row: {
+          author_id: string
+          content: string
+          conversation_id: string
+          created_at: string
+          deleted_at: string | null
+          edited: boolean
+          id: string
+          metadata: Json
+          organization_id: string
+          parent_message_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          conversation_id: string
+          created_at?: string
+          deleted_at?: string | null
+          edited?: boolean
+          id?: string
+          metadata?: Json
+          organization_id: string
+          parent_message_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          edited?: boolean
+          id?: string
+          metadata?: Json
+          organization_id?: string
+          parent_message_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_messages_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "studio_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_messages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_messages_parent_message_id_fkey"
+            columns: ["parent_message_id"]
+            isOneToOne: false
+            referencedRelation: "studio_messages"
             referencedColumns: ["id"]
           },
         ]
@@ -1755,6 +2397,7 @@ export type Database = {
       transactions: {
         Row: {
           amount: number
+          automatic: boolean
           category: string | null
           client_id: string | null
           created_at: string
@@ -1767,12 +2410,16 @@ export type Database = {
           notes: string | null
           organization_id: string
           project_id: string | null
+          source_id: string | null
+          source_label: string | null
+          source_type: string
           type: string
           updated_at: string
           vendor: string | null
         }
         Insert: {
           amount: number
+          automatic?: boolean
           category?: string | null
           client_id?: string | null
           created_at?: string
@@ -1785,12 +2432,16 @@ export type Database = {
           notes?: string | null
           organization_id: string
           project_id?: string | null
+          source_id?: string | null
+          source_label?: string | null
+          source_type?: string
           type: string
           updated_at?: string
           vendor?: string | null
         }
         Update: {
           amount?: number
+          automatic?: boolean
           category?: string | null
           client_id?: string | null
           created_at?: string
@@ -1803,6 +2454,9 @@ export type Database = {
           notes?: string | null
           organization_id?: string
           project_id?: string | null
+          source_id?: string | null
+          source_label?: string | null
+          source_type?: string
           type?: string
           updated_at?: string
           vendor?: string | null
@@ -1847,8 +2501,25 @@ export type Database = {
         Returns: string
       }
       can_finance: { Args: { org: string }; Returns: boolean }
+      can_manage_comment: {
+        Args: { comment_author: string; org: string }
+        Returns: boolean
+      }
+      can_read_studio_conversation: {
+        Args: { conversation: string; org: string }
+        Returns: boolean
+      }
+      current_member_id: { Args: { org: string }; Returns: string }
+      is_current_member: {
+        Args: { member: string; org: string }
+        Returns: boolean
+      }
       is_internal_org_member: { Args: { org: string }; Returns: boolean }
       is_org_member: { Args: { org: string }; Returns: boolean }
+      is_studio_conversation_member: {
+        Args: { conversation: string; member: string; org: string }
+        Returns: boolean
+      }
       org_role: {
         Args: { org: string }
         Returns: Database["public"]["Enums"]["member_role"]

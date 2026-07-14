@@ -1,8 +1,8 @@
 -- ============================================================================
--- BNS Studio v1.1.0 QA — permessi commenti Hub
+-- BNS Studio v1.1.0 QA — permessi commenti progetto / Studio legacy
 --
 -- La baseline generica `comments_member_all` consentiva update/delete a ogni
--- membro interno dell'organizzazione. Per i messaggi Hub serve un confine piu'
+-- membro interno dell'organizzazione. Per i messaggi progetto serve un confine piu'
 -- stretto: tutti i membri interni leggono e creano, ma solo autore e owner/admin
 -- possono modificare o cancellare.
 -- ============================================================================

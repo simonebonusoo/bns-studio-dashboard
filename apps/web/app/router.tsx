@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from './layouts/AppLayout';
 import { RequireAuth } from './RequireAuth';
 
@@ -14,7 +14,7 @@ const ProjectsPage = lazy(() => import('@/features/projects/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('@/features/projects/ProjectDetailPage'));
 const CalendarPage = lazy(() => import('@/features/calendar/CalendarPage'));
 const TeamPage = lazy(() => import('@/features/team/TeamPage'));
-const HubPage = lazy(() => import('@/features/team/WorkloadPage'));
+const StudioPage = lazy(() => import('@/features/studio/StudioPage'));
 const TimePage = lazy(() => import('@/features/time-tracking/TimePage'));
 const EstimatesPage = lazy(() => import('@/features/estimates/EstimatesPage'));
 const EstimateDetailPage = lazy(() => import('@/features/estimates/EstimateDetailPage'));
@@ -52,8 +52,9 @@ export const router = createBrowserRouter([
       { path: 'projects/:id', element: <ProjectDetailPage /> },
       { path: 'calendar', element: <CalendarPage /> },
       { path: 'team', element: <TeamPage /> },
-      { path: 'hub', element: <HubPage /> },
-      { path: 'workload', element: <HubPage /> },
+      { path: 'studio', element: <StudioPage /> },
+      { path: 'hub', element: <Navigate to="/studio" replace /> },
+      { path: 'workload', element: <Navigate to="/studio" replace /> },
       { path: 'time', element: <TimePage /> },
       { path: 'estimates', element: <EstimatesPage /> },
       { path: 'estimates/:id', element: <EstimateDetailPage /> },

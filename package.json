@@ -12,6 +12,7 @@
     "build": "npm run build:web && npm run build:desktop",
     "build:web": "npm --workspace @bns/web run build",
     "build:desktop": "npm --workspace @bns/desktop run build",
+    "notarize:mac": "bash scripts/macos-notarize.sh",
     "typecheck": "npm --workspace @bns/web run typecheck && npm --workspace @bns/api run typecheck",
     "lint": "npm --workspace @bns/web run lint",
     "test": "npm --workspace @bns/web run test",
