@@ -59,7 +59,8 @@ export function Topbar() {
       case 'file':
         return '/files';
       case 'comment':
-        return '/hub';
+      case 'studio_message':
+        return '/studio';
       default:
         return null;
     }

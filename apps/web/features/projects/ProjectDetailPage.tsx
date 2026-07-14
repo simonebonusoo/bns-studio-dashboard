@@ -202,8 +202,8 @@ export default function ProjectDetailPage() {
                   icon={MessagesSquare}
                   title="Attività interna"
                   description={`${projectUpdates.length} aggiornamenti nel canale progetto`}
-                  label="Apri Hub"
-                  onClick={() => navigate(`/hub?project=${project.id}`)}
+                  label="Apri Studio"
+                  onClick={() => navigate(`/studio?project=${project.id}`)}
                 />
                 <WorkspaceAction
                   icon={Receipt}
@@ -223,8 +223,8 @@ export default function ProjectDetailPage() {
                   icon={PlayCircle}
                   title="Time tracking"
                   description="Apri il timer già contestualizzato sul progetto"
-                  label="Apri nel Hub"
-                  onClick={() => navigate(`/hub?project=${project.id}`)}
+                  label="Apri in Studio"
+                  onClick={() => navigate(`/studio?project=${project.id}`)}
                 />
               </div>
             </Card>

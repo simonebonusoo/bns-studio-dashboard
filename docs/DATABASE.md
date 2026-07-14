@@ -15,10 +15,22 @@ Schema in `supabase/migrations/` (tutte applicate al progetto remoto
 - `0004_bootstrap_owner.sql` — trigger profilo automatico + funzione `bootstrap_owner` (vedi [BOOTSTRAP.md](BOOTSTRAP.md)).
 - `0005_rls_baseline.sql` — helper + policy RLS **idempotenti** (stato deterministico).
 - `0006_storage.sql` — bucket Storage privato `bns-files` + policy (vedi [SECURITY.md](SECURITY.md)).
+- `0016_studio.sql` — area Studio: conversazioni, membri conversazione,
+  messaggi/thread, reaction, salvati personali, letture per membro e allegati.
+- `0017_studio_realtime.sql` — abilita Realtime Supabase sulle tabelle Studio.
+- `0018_studio_rls_hardening.sql` — restringe policy Studio per conversazioni
+  private, membership e metadata dei messaggi.
 
 ### Tabelle principali
 
 `organizations`, `profiles`, `members`, `companies`, `clients`, `opportunities`, `services`, `projects`, `milestones`, `tasks`, `time_entries`, `estimates`, `invoices`, `payments`, `transactions`, `contracts`, `files`, `calendar_events`, `comments`, `notifications`, `activity_logs`, `documents`.
+
+Studio usa tabelle dedicate `studio_conversations`,
+`studio_conversation_members`, `studio_messages`,
+`studio_message_reactions`, `studio_message_saves`,
+`studio_conversation_reads` e `studio_message_attachments`. I vecchi messaggi
+progetto basati su `comments(entity_type='project')` restano disponibili come
+storico/compatibilità e non vengono cancellati dalla migrazione.
 
 ### Convenzioni
 

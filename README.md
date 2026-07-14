@@ -90,6 +90,7 @@ Nessun secret / service role nel frontend. Passaggio a Supabase: vedi
 - Analytics usa solo dati reali del seed o del repository attivo.
 - Il layer React non interroga direttamente Dexie o Supabase.
 - La web app builda correttamente dal workspace `apps/web`.
-- La shell desktop è configurata in `apps/desktop`, ma in questo ambiente il comando `tauri` non è disponibile, quindi build e run desktop non sono verificabili end-to-end.
+- La shell desktop Tauri è configurata in `apps/desktop` e il build macOS genera `.app` e `.dmg`.
+- Signing e notarization macOS sono documentati in `docs/DESKTOP_DISTRIBUTION.md` e richiedono credenziali Apple Developer.
 
-Dettagli aggiuntivi in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DATABASE.md](docs/DATABASE.md), [docs/RLS.md](docs/RLS.md) e [docs/TESTING.md](docs/TESTING.md).
+Dettagli aggiuntivi in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DATABASE.md](docs/DATABASE.md), [docs/DESKTOP_DISTRIBUTION.md](docs/DESKTOP_DISTRIBUTION.md), [docs/RLS.md](docs/RLS.md) e [docs/TESTING.md](docs/TESTING.md).

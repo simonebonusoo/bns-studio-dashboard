@@ -401,6 +401,82 @@ export interface Comment extends BaseEntity {
   edited: boolean;
 }
 
+export type StudioConversationType = 'channel' | 'project' | 'dm' | 'group_dm';
+export type StudioEntityType =
+  | 'client'
+  | 'project'
+  | 'task'
+  | 'estimate'
+  | 'contract'
+  | 'invoice'
+  | 'payment'
+  | 'file';
+
+export interface StudioConversation extends BaseEntity {
+  type: StudioConversationType;
+  name: string;
+  slug: string;
+  description?: string | null;
+  projectId?: string | null;
+  isPrivate: boolean;
+  createdBy?: string;
+  archivedAt?: string | null;
+}
+
+export interface StudioConversationMember extends BaseEntity {
+  conversationId: string;
+  memberId: string;
+  role: 'owner' | 'admin' | 'member';
+  joinedAt: string;
+}
+
+export interface StudioEntityReference {
+  id: string;
+  type: StudioEntityType;
+  entityId: string;
+  label: string;
+  href: string;
+}
+
+export interface StudioMessageMetadata {
+  mentions?: string[];
+  mentionEveryone?: boolean;
+  references?: StudioEntityReference[];
+  legacyCommentId?: string;
+}
+
+export interface StudioMessage extends BaseEntity {
+  conversationId: string;
+  authorId: string;
+  parentMessageId?: string | null;
+  content: string;
+  metadata: StudioMessageMetadata;
+  edited: boolean;
+  deletedAt?: string | null;
+}
+
+export interface StudioMessageReaction extends BaseEntity {
+  messageId: string;
+  memberId: string;
+  emoji: string;
+}
+
+export interface StudioMessageSave extends BaseEntity {
+  messageId: string;
+  memberId: string;
+}
+
+export interface StudioConversationRead extends BaseEntity {
+  conversationId: string;
+  memberId: string;
+  lastReadAt: string;
+}
+
+export interface StudioMessageAttachment extends BaseEntity {
+  messageId: string;
+  fileId: string;
+}
+
 export interface Notification extends BaseEntity {
   userId: string;
   type: NotificationType;

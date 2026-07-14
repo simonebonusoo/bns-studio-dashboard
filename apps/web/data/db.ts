@@ -23,6 +23,13 @@ import type {
   ActivityLog,
   MarkdownImport,
   DocItem,
+  StudioConversation,
+  StudioConversationMember,
+  StudioMessage,
+  StudioMessageReaction,
+  StudioMessageSave,
+  StudioConversationRead,
+  StudioMessageAttachment,
 } from '@/types';
 
 /** Utente demo persistito localmente (solo demo — nessuna password reale in produzione). */
@@ -63,11 +70,18 @@ export class BnsDatabase extends Dexie {
   activityLogs!: Table<ActivityLog, string>;
   markdownImports!: Table<MarkdownImport, string>;
   documents!: Table<DocItem, string>;
+  studioConversations!: Table<StudioConversation, string>;
+  studioConversationMembers!: Table<StudioConversationMember, string>;
+  studioMessages!: Table<StudioMessage, string>;
+  studioMessageReactions!: Table<StudioMessageReaction, string>;
+  studioMessageSaves!: Table<StudioMessageSave, string>;
+  studioConversationReads!: Table<StudioConversationRead, string>;
+  studioMessageAttachments!: Table<StudioMessageAttachment, string>;
   meta!: Table<{ key: string; value: unknown }, string>;
 
   constructor() {
     super('bns-studio-os');
-    this.version(4).stores({
+    this.version(5).stores({
       users: 'id, email, memberId, organizationId',
       organizations: 'id, slug',
       members: 'id, organizationId, email, role, status',
@@ -92,6 +106,13 @@ export class BnsDatabase extends Dexie {
       activityLogs: 'id, organizationId, actorId, entityType, entityId',
       markdownImports: 'id, organizationId, status, createdBy, createdAt',
       documents: 'id, organizationId, projectId, clientId',
+      studioConversations: 'id, organizationId, type, slug, projectId, archivedAt',
+      studioConversationMembers: 'id, organizationId, conversationId, memberId',
+      studioMessages: 'id, organizationId, conversationId, authorId, parentMessageId, createdAt',
+      studioMessageReactions: 'id, organizationId, messageId, memberId, emoji',
+      studioMessageSaves: 'id, organizationId, messageId, memberId',
+      studioConversationReads: 'id, organizationId, conversationId, memberId',
+      studioMessageAttachments: 'id, organizationId, messageId, fileId',
       meta: 'key',
     });
   }

@@ -13,7 +13,7 @@ import {
   FolderOpen,
   FileUp,
   Package,
-  Gauge,
+  MessageSquare,
   type LucideIcon,
 } from 'lucide-react';
 import type { Permission } from '@/features/auth/permissions';
@@ -51,7 +51,7 @@ export const NAV: NavGroup[] = [
     label: 'Team',
     items: [
       { label: 'Membri', to: '/team', icon: UsersRound, permission: 'team.read' },
-      { label: 'Hub', to: '/hub', icon: Gauge, permission: 'team.read' },
+      { label: 'Studio', to: '/studio', icon: MessageSquare, permission: 'team.read' },
     ],
   },
   {

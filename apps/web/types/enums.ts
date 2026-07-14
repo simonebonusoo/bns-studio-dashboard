@@ -183,7 +183,7 @@ export type PaymentStatus =
 
 export type InstallmentStatus = 'scheduled' | 'due_soon' | 'paid' | 'overdue' | 'cancelled';
 export type DocumentCategory = 'Contratti' | 'Preventivi' | 'Fatture' | 'Documenti' | 'Asset' | 'Altro';
-export type DocumentSourceType = 'contract' | 'estimate' | 'invoice' | 'project' | 'generic';
+export type DocumentSourceType = 'contract' | 'estimate' | 'invoice' | 'project' | 'studio_message' | 'generic';
 export type RecurrenceFrequency = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
 export type ContractRecurrence = 'one_time' | 'monthly' | 'quarterly' | 'semiannual' | 'annual' | 'custom';
 export type RenewalType = 'none' | 'manual' | 'automatic';
