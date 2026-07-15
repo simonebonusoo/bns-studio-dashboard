@@ -43,6 +43,7 @@ import { getSupabaseClient } from '@/services/supabase';
 import { fileService } from '@/services/fileService';
 import { studioService, type StudioMessagesPage, type StudioWorkspace } from '@/services/studioService';
 import { useAuth } from '@/stores/auth';
+import { conversationTitle, errorMessage, formatMessage, memberName, readableMessageText } from './lib/studioMarkdown';
 import type {
   FileItem,
   Member,
@@ -56,71 +57,11 @@ import type {
 
 const EMOJI = ['👍', '✅', '🔥', '👀', '💡', '🙏'];
 
-function memberName(member?: Member | null) {
-  if (!member) return 'Sistema';
-  return member.displayName || `${member.firstName} ${member.lastName}`;
-}
-
-function conversationTitle(conversation?: StudioConversation | null, members?: Member[], currentMemberId?: string | null) {
-  if (!conversation) return 'Studio';
-  if (conversation.type === 'dm') {
-    const other = members?.find((member) => conversation.slug.includes(member.id) && member.id !== currentMemberId);
-    return other ? memberName(other) : conversation.name;
-  }
-  return conversation.type === 'project' ? conversation.name : `#${conversation.name}`;
-}
-
-function formatMessage(content: string, mentions: Member[], references: StudioEntityReference[]) {
-  const mentionById = new Map(mentions.map((member) => [member.id, member]));
-  const referenceById = new Map(references.map((reference) => [reference.id, reference]));
-  const escaped = content
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  return escaped
-    .replace(/`([^`]+)`/g, '<code class="rounded bg-surface-2 px-1 py-0.5 text-[0.92em]">$1</code>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n/g, '<br />')
-    .replace(/@(member:[a-zA-Z0-9_-]+)/g, (_, token: string) => {
-      const id = token.replace('member:', '');
-      const member = mentionById.get(id);
-      return `<span class="rounded-md bg-accent/15 px-1 font-medium text-fg">@${member ? memberName(member).split(' ')[0] : 'membro'}</span>`;
-    })
-    .replace(/\[\[(ref:[a-zA-Z0-9_-]+)\]\]/g, (_, token: string) => {
-      const reference = referenceById.get(token.replace('ref:', ''));
-      return reference
-        ? `<a class="rounded-md bg-info/10 px-1 font-medium text-info hover:underline" href="${reference.href}">${reference.label}</a>`
-        : '';
-    });
-}
-
-function readableMessageText(content: string, members: Member[], references: StudioEntityReference[]) {
-  const memberById = new Map(members.map((member) => [member.id, member]));
-  const referenceById = new Map(references.map((reference) => [reference.id, reference]));
-  return content
-    .replace(/@(member:[a-zA-Z0-9_-]+)/g, (_, token: string) => {
-      const member = memberById.get(token.replace('member:', ''));
-      return `@${member ? memberName(member).split(' ')[0] : 'membro'}`;
-    })
-    .replace(/\[\[(ref:[a-zA-Z0-9_-]+)\]\]/g, (_, token: string) => {
-      const reference = referenceById.get(token.replace('ref:', ''));
-      return reference?.label ?? '';
-    })
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 function fileIcon(file?: FileItem) {
   if (!file) return <File className="h-4 w-4" />;
   if (file.mime.startsWith('image/')) return <File className="h-4 w-4 text-info" />;
   if (file.mime === 'application/pdf') return <File className="h-4 w-4 text-danger" />;
   return <File className="h-4 w-4" />;
-}
-
-function errorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error) return error.message;
-  if (error && typeof error === 'object' && 'message' in error) return String((error as { message?: unknown }).message);
-  return fallback;
 }
 
 function AttachmentPreview({ attachment, files }: { attachment: StudioMessageAttachment; files: FileItem[] }) {
