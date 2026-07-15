@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Printer, Check, X, FileOutput, Pencil, Trash2, Download, Share2, FileText, Eye } from 'lucide-react';
+import { ArrowLeft, Printer, Check, X, FileOutput, Pencil, Trash2, Download, Share2, FileText, Eye, ChevronDown, Sparkles } from 'lucide-react';
 import { useDetail, useList, useUpdate, useCreate, useRemove } from '@/hooks/useEntities';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
@@ -13,6 +13,7 @@ import { getEstimateDeleteSafety, hasBlockingDependencies } from '@/services/del
 import { downloadMarkdown, downloadPdf, estimateMarkdown, estimatePdfBlob, sharePdf, upsertMarkdownDocument } from '@/services/documentService';
 import { useAuth } from '@/stores/auth';
 import { EstimateFormModal } from './EstimateFormModal';
+import { BnsPdfDialog } from './BnsPdfDialog';
 import { usePreview } from '@/components/preview/previewContext';
 import type { Estimate, Client, Invoice, Contract } from '@/types';
 import { toast } from 'sonner';
@@ -32,6 +33,8 @@ export default function EstimateDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [markdownOpen, setMarkdownOpen] = useState(false);
+  const [pdfMenuOpen, setPdfMenuOpen] = useState(false);
+  const [bnsPdfOpen, setBnsPdfOpen] = useState(false);
 
   if (isLoading) return <LoadingState />;
   if (!estimate) return <ErrorState message="Preventivo non trovato" />;
@@ -110,7 +113,34 @@ export default function EstimateDetailPage() {
           <StatusBadge status={estimate.status} />
           <Button variant="secondary" onClick={() => preview.open({ name: `preventivo-${estimate.number}.pdf`, blob: estimatePdfBlob(estimate, client), mime: 'application/pdf' })}><Eye className="h-4 w-4" /> Anteprima</Button>
           <Button variant="secondary" onClick={() => window.print()}><Printer className="h-4 w-4" /> Stampa / PDF</Button>
-          <Button variant="secondary" onClick={downloadEstimatePdf}><Download className="h-4 w-4" /> PDF</Button>
+          <div className="relative">
+            <Button variant="secondary" onClick={() => setPdfMenuOpen((o) => !o)} aria-haspopup="menu" aria-expanded={pdfMenuOpen}>
+              <Download className="h-4 w-4" /> PDF <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+            </Button>
+            {pdfMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setPdfMenuOpen(false)} aria-hidden />
+                <div role="menu" className="absolute right-0 z-50 mt-1.5 w-60 animate-scale-in rounded-lg border border-border bg-surface p-1 shadow-pop">
+                  <button
+                    role="menuitem"
+                    className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left text-sm text-fg-subtle transition-colors hover:bg-surface-2 hover:text-fg"
+                    onClick={() => { setPdfMenuOpen(false); void downloadEstimatePdf(); }}
+                  >
+                    <FileText className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span><span className="font-medium text-fg">PDF classico</span><br /><span className="text-xs text-fg-subtle">Documento essenziale (voci e totali)</span></span>
+                  </button>
+                  <button
+                    role="menuitem"
+                    className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left text-sm text-fg-subtle transition-colors hover:bg-surface-2 hover:text-fg"
+                    onClick={() => { setPdfMenuOpen(false); setBnsPdfOpen(true); }}
+                  >
+                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                    <span><span className="font-medium text-fg">PDF BnsStudio</span><br /><span className="text-xs text-fg-subtle">Presentazione impaginata dai dati del preventivo</span></span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           <Button variant="secondary" onClick={shareEstimatePdf}><Share2 className="h-4 w-4" /> Share</Button>
           <Button variant="ghost" onClick={openMarkdown}><FileText className="h-4 w-4" /> Markdown</Button>
           {canManage && (
@@ -154,6 +184,7 @@ export default function EstimateDetailPage() {
       />
 
       <EstimateFormModal open={editOpen} onClose={() => setEditOpen(false)} estimate={estimate} />
+      <BnsPdfDialog open={bnsPdfOpen} onClose={() => setBnsPdfOpen(false)} estimate={estimate} client={client} />
       <Modal
         open={markdownOpen}
         onClose={() => setMarkdownOpen(false)}
