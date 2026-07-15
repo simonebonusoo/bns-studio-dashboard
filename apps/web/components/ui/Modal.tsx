@@ -20,7 +20,7 @@ export function Modal({
   description?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 }) {
   useEffect(() => {
     if (!open) return;
@@ -34,7 +34,13 @@ export function Modal({
   }, [open, onClose]);
 
   if (!open) return null;
-  const widths = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
+  const widths = {
+    sm: 'max-w-sm',
+    md: 'max-w-lg',
+    lg: 'max-w-2xl',
+    xl: 'max-w-4xl',
+    full: 'max-w-[calc(100vw-1rem)] sm:max-w-[calc(100vw-2rem)] h-[calc(100dvh-1rem)] sm:h-[calc(100dvh-2rem)]',
+  };
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/40 p-4 animate-overlay-in sm:p-8">
