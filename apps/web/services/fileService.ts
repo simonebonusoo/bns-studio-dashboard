@@ -17,6 +17,7 @@ import type { FileItem } from '@/types';
 export interface FileUploadInput {
   file: File;
   folder?: string;
+  folderId?: string | null;
   projectId?: string | null;
   clientId?: string | null;
   entityType?: FileItem['entityType'];
@@ -64,6 +65,7 @@ export const fileService = {
       mime,
       size: file.size,
       folder: input.folder,
+      folderId: input.folderId ?? null,
       projectId: input.projectId ?? null,
       clientId: input.clientId ?? null,
       entityType: input.entityType ?? 'generic',

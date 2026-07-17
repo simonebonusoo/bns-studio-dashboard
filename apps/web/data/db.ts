@@ -32,6 +32,7 @@ import type {
   StudioMessageAttachment,
   GithubConnection,
   ProjectRepository,
+  ArchiveFolder,
 } from '@/types';
 
 /** Utente demo persistito localmente (solo demo — nessuna password reale in produzione). */
@@ -66,6 +67,7 @@ export class BnsDatabase extends Dexie {
   transactions!: Table<Transaction, string>;
   contracts!: Table<Contract, string>;
   files!: Table<FileItem, string>;
+  archiveFolders!: Table<ArchiveFolder, string>;
   events!: Table<CalendarEvent, string>;
   comments!: Table<Comment, string>;
   notifications!: Table<Notification, string>;
@@ -124,6 +126,12 @@ export class BnsDatabase extends Dexie {
     this.version(6).stores({
       githubConnections: 'id, organizationId, status',
       projectRepositories: 'id, organizationId, projectId, repoId',
+    });
+
+    // v7 (1.2.x): Archivio a cartelle. Cartelle custom/sistema + collegamento file→cartella.
+    this.version(7).stores({
+      archiveFolders: 'id, organizationId, parentFolderId, projectId, clientId, folderType',
+      files: 'id, organizationId, projectId, clientId, taskId, folderId',
     });
   }
 }

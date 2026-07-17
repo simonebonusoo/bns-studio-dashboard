@@ -9,7 +9,7 @@ import { useRemoveFile, useFileUrl } from '@/hooks/useFiles';
 import { DOCUMENT_CATEGORIES, SOURCE_TYPES } from './documentCategories';
 import { formatDate } from '@/lib/format';
 import { saveUrlFile } from '@/services/downloadService';
-import type { FileItem, Project, Client } from '@/types';
+import type { ArchiveFolder, FileItem, Project, Client } from '@/types';
 import { toast } from 'sonner';
 
 const fmtSize = (bytes?: number | null) => {
@@ -21,6 +21,7 @@ export function FileDetailDrawer({ fileId, onClose }: { fileId: string | null; o
   const { data: file } = useDetail<FileItem>('files', fileId ?? undefined);
   const { data: projects } = useList<Project>('projects');
   const { data: clients } = useList<Client>('clients');
+  const { data: folders } = useList<ArchiveFolder>('archiveFolders');
   const update = useUpdate<FileItem>('files');
   const remove = useRemoveFile();
   const resolvedUrl = useFileUrl(file ?? undefined);
@@ -94,6 +95,18 @@ export function FileDetailDrawer({ fileId, onClose }: { fileId: string | null; o
             <Select value={file.clientId ?? ''} onChange={(e) => patch({ clientId: e.target.value || null })}>
               <option value="">—</option>
               {(clients ?? []).map((c) => <option key={c.id} value={c.id}>{c.displayName}</option>)}
+            </Select>
+          </F>
+          <F label="Cartella">
+            <Select value={file.folderId ?? ''} onChange={(e) => patch({ folderId: e.target.value || null })}>
+              <option value="">Radice progetto / Non organizzati</option>
+              {(folders ?? [])
+                .filter((folder) => !folder.deletedAt)
+                .map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </option>
+                ))}
             </Select>
           </F>
           <label className="flex items-center gap-2 text-sm">

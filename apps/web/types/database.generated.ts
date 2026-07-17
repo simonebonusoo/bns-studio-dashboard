@@ -62,6 +62,96 @@ export type Database = {
           },
         ]
       }
+      archive_folders: {
+        Row: {
+          client_id: string | null
+          color: string | null
+          created_at: string
+          created_by: string | null
+          default_visibility: string | null
+          deleted_at: string | null
+          description: string | null
+          folder_type: string
+          icon: string | null
+          id: string
+          name: string
+          organization_id: string
+          parent_folder_id: string | null
+          project_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_visibility?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          folder_type?: string
+          icon?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          parent_folder_id?: string | null
+          project_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_visibility?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          folder_type?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          parent_folder_id?: string | null
+          project_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archive_folders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archive_folders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archive_folders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archive_folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "archive_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archive_folders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_events: {
         Row: {
           all_day: boolean | null
@@ -741,6 +831,7 @@ export type Database = {
           entity_id: string | null
           entity_type: string | null
           folder: string | null
+          folder_id: string | null
           id: string
           metadata: Json
           mime: string | null
@@ -763,6 +854,7 @@ export type Database = {
           entity_id?: string | null
           entity_type?: string | null
           folder?: string | null
+          folder_id?: string | null
           id?: string
           metadata?: Json
           mime?: string | null
@@ -785,6 +877,7 @@ export type Database = {
           entity_id?: string | null
           entity_type?: string | null
           folder?: string | null
+          folder_id?: string | null
           id?: string
           metadata?: Json
           mime?: string | null
@@ -804,6 +897,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "files_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "archive_folders"
             referencedColumns: ["id"]
           },
           {

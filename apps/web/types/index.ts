@@ -363,13 +363,33 @@ export interface FileItem extends BaseEntity {
   entityType?: DocumentSourceType | null;
   entityId?: string | null;
   documentCategory?: DocumentCategory;
+  /** Cartella testuale legacy (retrocompatibilità). Non più usata dall'Archivio a cartelle. */
   folder?: string;
+  /** Cartella custom/sistema di appartenenza. NULL = radice progetto virtuale o "non organizzati". */
+  folderId?: string | null;
   clientVisible: boolean;
   uploadedBy?: string;
   /** In demo: URL esterno o data-uri. In produzione: path Storage. */
   url?: string;
   tags: string[];
   metadata?: Record<string, unknown>;
+}
+
+/** Tipo di cartella nell'Archivio. Le cartelle-progetto sono virtuali e non hanno un record. */
+export type FolderType = 'custom' | 'system';
+export type FolderVisibility = 'internal' | 'client';
+
+/** Cartella personalizzata/di sistema dell'Archivio (record reale, vedi archive_folders). */
+export interface ArchiveFolder extends BaseEntity {
+  parentFolderId?: string | null;
+  projectId?: string | null;
+  clientId?: string | null;
+  name: string;
+  description?: string | null;
+  folderType: FolderType;
+  icon?: string | null;
+  color?: string | null;
+  defaultVisibility?: FolderVisibility | null;
 }
 
 export interface CalendarEvent extends BaseEntity {
