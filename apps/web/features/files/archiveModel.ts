@@ -201,6 +201,34 @@ export function buildBreadcrumb(locationId: string, data: ArchiveData): Breadcru
   return [...trail, ...chain];
 }
 
+/** Id di navigazione della posizione di un file (cartella custom, radice progetto o non organizzati). */
+export function fileLocationId(file: FileItem): string {
+  if (file.folderId) return file.folderId;
+  if (file.projectId) return `${PROJECT_PREFIX}${file.projectId}`;
+  return UNASSIGNED_ID;
+}
+
+/** Percorso leggibile della posizione (es. "Archivio / K9 Pro / Branding"). */
+export function locationPath(locationId: string, data: ArchiveData): string {
+  return buildBreadcrumb(locationId, data)
+    .map((c) => c.name)
+    .join(' / ');
+}
+
+/** Tutte le cartelle (custom+progetto) come nodi, per la ricerca globale. */
+export function allFolderNodes(data: ArchiveData): FolderNode[] {
+  const nodes: FolderNode[] = [];
+  for (const project of data.projects.filter((p) => !p.deletedAt)) {
+    const node = resolveFolder(`${PROJECT_PREFIX}${project.id}`, data);
+    if (node) nodes.push(node);
+  }
+  for (const folder of activeFolders(data.folders)) {
+    const node = resolveFolder(folder.id, data);
+    if (node) nodes.push(node);
+  }
+  return nodes;
+}
+
 /** Filtro di ricerca su un file (nome, descrizione, categoria, tag, progetto, cliente, estensione). */
 export function fileMatchesQuery(file: FileItem, query: string, projectName: string, clientName: string): boolean {
   const q = query.trim().toLowerCase();
@@ -232,6 +260,31 @@ export function dedupeName(name: string, taken: Set<string>): string {
     candidate = `${base} (${i})${ext}`;
   }
   return candidate;
+}
+
+export interface DestinationNode {
+  id: string;
+  name: string;
+  depth: number;
+  kind: FolderNodeKind;
+}
+
+/**
+ * Albero appiattito delle destinazioni valide per uno spostamento (dialog "Sposta").
+ * Include la radice, le cartelle progetto e le cartelle custom annidate. Le cartelle
+ * in `exclude` (e i loro discendenti) vengono omesse per impedire cicli.
+ */
+export function buildDestinationTree(data: ArchiveData, exclude: Set<string> = new Set()): DestinationNode[] {
+  const acc: DestinationNode[] = [{ id: ROOT_ID, name: 'Archivio', depth: 0, kind: 'system' }];
+  const walk = (locationId: string, depth: number) => {
+    for (const node of listChildren(locationId, data).folders) {
+      if (node.kind === 'unassigned' || exclude.has(node.id)) continue;
+      acc.push({ id: node.id, name: node.name, depth, kind: node.kind });
+      walk(node.id, depth + 1);
+    }
+  };
+  walk(ROOT_ID, 1);
+  return acc;
 }
 
 /** Id di tutte le sottocartelle discendenti (incluse indirette) di una cartella. */
