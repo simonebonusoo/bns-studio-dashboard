@@ -1,4 +1,4 @@
-import type { ArchiveFolder, Client, FileItem, Project } from '@/types';
+import type { ArchiveFolder, Client, FileItem, FolderVisibility, Project } from '@/types';
 
 /**
  * Modello dell'Archivio a cartelle.
@@ -29,6 +29,7 @@ export interface FolderNode {
   icon?: string | null;
   color?: string | null;
   description?: string | null;
+  defaultVisibility?: FolderVisibility | null;
   fileCount: number;
   folderCount: number;
   updatedAt?: string;
@@ -102,6 +103,7 @@ function toNode(folder: ArchiveFolder, data: ArchiveData): FolderNode {
     icon: folder.icon,
     color: folder.color,
     description: folder.description,
+    defaultVisibility: folder.defaultVisibility ?? null,
     fileCount: directFiles(folder.id, data).length,
     folderCount: directCustomFolders(folder.id, data).length,
     updatedAt: folder.updatedAt,

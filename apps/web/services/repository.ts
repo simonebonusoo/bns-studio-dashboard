@@ -23,6 +23,8 @@ export interface BaseRow {
 
 export interface EntityRepository<T extends BaseRow> {
   list: (filter?: (row: T) => boolean) => Promise<T[]>;
+  /** Elenco dei soli record soft-eliminati (per il Cestino). */
+  listDeleted: () => Promise<T[]>;
   get: (id: string) => Promise<T | undefined>;
   create: (data: Omit<T, 'id' | 'organizationId' | 'createdAt' | 'updatedAt'> & Partial<T>) => Promise<T>;
   update: (id: string, patch: Partial<T>) => Promise<T>;
@@ -169,6 +171,13 @@ function createDemoRepository<T extends BaseRow>(tableName: TableName, table: Ta
       return filter ? active.filter(filter) : active;
     },
 
+    async listDeleted(): Promise<T[]> {
+      const organizationId = requireOrganizationId();
+      if (!organizationId) return [];
+      const rows = await table.where('organizationId').equals(organizationId).toArray();
+      return rows.filter((row) => row.deletedAt);
+    },
+
     async get(id: string): Promise<T | undefined> {
       const row = await table.get(id);
       return row && !row.deletedAt ? row : undefined;
@@ -302,6 +311,13 @@ function createSupabaseRepository<T extends BaseRow, K extends TableName>(
       if (error) throwSupabaseError(tableName, 'list', error);
       const rows = (data ?? []).map((row) => deserialize<T>(row));
       return filter ? rows.filter(filter) : rows;
+    },
+
+    async listDeleted() {
+      // Recupera tutti i record dell'org e tiene solo i soft-eliminati.
+      const { data, error } = await dbTable(tableName).select('*');
+      if (error) throwSupabaseError(tableName, 'listDeleted', error);
+      return (data ?? []).map((row) => deserialize<T>(row)).filter((row) => (row as T).deletedAt);
     },
 
     async get(id: string) {

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { Input, Textarea, Field } from '@/components/ui/Input';
+import { Input, Textarea, Select, Field } from '@/components/ui/Input';
 import { cn } from '@/lib/cn';
 import type { NewFolderInput } from './useArchive';
+import type { FolderVisibility } from '@/types';
 
 const COLORS = ['#a3e635', '#38bdf8', '#f472b6', '#fbbf24', '#c084fc', '#34d399', '#f87171', '#94a3b8'];
 
@@ -23,6 +24,7 @@ export function NewFolderDialog({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState<string>(COLORS[0]);
+  const [visibility, setVisibility] = useState<'' | FolderVisibility>('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -30,6 +32,7 @@ export function NewFolderDialog({
       setName('');
       setDescription('');
       setColor(COLORS[0]);
+      setVisibility('');
       setSaving(false);
     }
   }, [open]);
@@ -38,7 +41,7 @@ export function NewFolderDialog({
     if (!name.trim() || saving) return;
     setSaving(true);
     try {
-      await onCreate({ name, description, color, parentLocationId });
+      await onCreate({ name, description, color, parentLocationId, defaultVisibility: visibility || undefined });
       onClose();
     } finally {
       setSaving(false);
@@ -89,6 +92,13 @@ export function NewFolderDialog({
               />
             ))}
           </div>
+        </Field>
+        <Field label="Visibilità predefinita" hint="I file caricati qui erediteranno questa visibilità.">
+          <Select value={visibility} onChange={(e) => setVisibility(e.target.value as '' | FolderVisibility)}>
+            <option value="">Interno (predefinito)</option>
+            <option value="internal">Interno</option>
+            <option value="client">Cliente</option>
+          </Select>
         </Field>
         <Field label="Descrizione" hint="Opzionale">
           <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />

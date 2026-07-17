@@ -1,5 +1,8 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useList, useCreate, useUpdate, useRemove } from '@/hooks/useEntities';
+import { repositories } from '@/services/repository';
+import { fileService } from '@/services/fileService';
 import { getActiveSession } from '@/services/session';
 import type { ArchiveFolder, Client, FileItem, FolderType, FolderVisibility, Project } from '@/types';
 import {
@@ -35,6 +38,59 @@ export function useArchiveData() {
   return {
     data,
     isLoading: files.isLoading || folders.isLoading || projects.isLoading || clients.isLoading,
+  };
+}
+
+/**
+ * Cestino: file e cartelle soft-eliminati, con azioni di ripristino ed
+ * eliminazione definitiva. Le query dei soft-deleted usano una key separata
+ * (`['files','deleted']`) così l'invalidazione di `['files']` aggiorna sia le
+ * liste attive sia il Cestino.
+ */
+export function useDeletedArchive() {
+  const qc = useQueryClient();
+  const files = useQuery<FileItem[]>({
+    queryKey: ['files', 'deleted'],
+    queryFn: () => repositories.files.listDeleted() as unknown as Promise<FileItem[]>,
+  });
+  const folders = useQuery<ArchiveFolder[]>({
+    queryKey: ['archiveFolders', 'deleted'],
+    queryFn: () => repositories.archiveFolders.listDeleted() as unknown as Promise<ArchiveFolder[]>,
+  });
+
+  const invalidate = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ['files'] });
+    qc.invalidateQueries({ queryKey: ['archiveFolders'] });
+  }, [qc]);
+
+  const restoreFile = useCallback(async (file: FileItem) => {
+    await fileService.restore(file);
+    invalidate();
+  }, [invalidate]);
+
+  const purgeFile = useCallback(async (file: FileItem) => {
+    await fileService.purge(file);
+    invalidate();
+  }, [invalidate]);
+
+  const restoreFolder = useCallback(async (folder: ArchiveFolder) => {
+    await repositories.archiveFolders.update(folder.id, { deletedAt: null } as Partial<ArchiveFolder>);
+    invalidate();
+  }, [invalidate]);
+
+  const purgeFolder = useCallback(async (folder: ArchiveFolder) => {
+    await repositories.archiveFolders.hardDelete(folder.id);
+    invalidate();
+  }, [invalidate]);
+
+  return {
+    files: files.data ?? [],
+    folders: folders.data ?? [],
+    isLoading: files.isLoading || folders.isLoading,
+    restoreFile,
+    purgeFile,
+    restoreFolder,
+    purgeFolder,
   };
 }
 
@@ -81,20 +137,21 @@ export function resolveParentContext(
 export function resolveUploadContext(
   locationId: string,
   data: ArchiveData,
-): { folderId: string | null; projectId: string | null; clientId: string | null } {
+): { folderId: string | null; projectId: string | null; clientId: string | null; defaultVisibility: FolderVisibility | null } {
   if (!locationId || locationId === ROOT_ID || locationId === 'unassigned') {
-    return { folderId: null, projectId: null, clientId: null };
+    return { folderId: null, projectId: null, clientId: null, defaultVisibility: null };
   }
   if (isProjectFolderId(locationId)) {
     const projectId = projectIdFromFolderId(locationId);
     const project = data.projects.find((p) => p.id === projectId);
-    return { folderId: null, projectId, clientId: project?.clientId ?? null };
+    return { folderId: null, projectId, clientId: project?.clientId ?? null, defaultVisibility: null };
   }
   const folder = data.folders.find((f) => f.id === locationId);
   return {
     folderId: locationId,
     projectId: folder?.projectId ?? null,
     clientId: folder?.clientId ?? null,
+    defaultVisibility: folder?.defaultVisibility ?? null,
   };
 }
 

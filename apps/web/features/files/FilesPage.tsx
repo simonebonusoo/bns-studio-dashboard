@@ -44,6 +44,7 @@ import { DOCUMENT_CATEGORIES } from './documentCategories';
 import { FileDetailDrawer } from './FileDetailDrawer';
 import { NewFolderDialog } from './NewFolderDialog';
 import { MoveDialog } from './MoveDialog';
+import { TrashDialog } from './TrashDialog';
 import {
   useArchiveData,
   useArchiveMutations,
@@ -71,7 +72,7 @@ import { useUI } from '@/stores/ui';
 import { cn } from '@/lib/cn';
 import { formatDate } from '@/lib/format';
 import { saveUrlFile } from '@/services/downloadService';
-import type { FileItem, Project } from '@/types';
+import type { FileItem, FolderVisibility, Project } from '@/types';
 
 function iconFor(mime?: string | null) {
   const type = mime ?? '';
@@ -115,6 +116,7 @@ export default function FilesPage() {
   const [renameFileTarget, setRenameFileTarget] = useState<FileItem | null>(null);
   const [linkProjectOpen, setLinkProjectOpen] = useState(false);
   const [tagPromptOpen, setTagPromptOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
   // Selezione multipla: id compositi "file:<id>" / "folder:<id>".
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [moveState, setMoveState] = useState<{ files: FileItem[]; folders: FolderNode[] } | null>(null);
@@ -425,7 +427,8 @@ export default function FilesPage() {
             projectId: ctx.projectId,
             clientId: ctx.clientId,
             documentCategory: category === 'all' ? undefined : (category as FileItem['documentCategory']),
-            clientVisible: false,
+            // Eredita la visibilità di default della cartella, se impostata.
+            clientVisible: ctx.defaultVisibility === 'client',
             tags: [],
           });
           uploaded += 1;
@@ -466,7 +469,10 @@ export default function FilesPage() {
     toast.success('Cartella creata');
   };
 
-  const editFolder = async (folder: FolderNode, patch: { name: string; color: string | null; description: string | null }) => {
+  const editFolder = async (
+    folder: FolderNode,
+    patch: { name: string; color: string | null; description: string | null; defaultVisibility: FolderVisibility | null },
+  ) => {
     await updateFolder.mutateAsync({ id: folder.id, patch });
     toast.success('Cartella aggiornata');
   };
@@ -724,6 +730,9 @@ export default function FilesPage() {
                 <Grid2x2 className="h-4 w-4" /> Griglia
               </button>
             </div>
+            <Button variant="secondary" size="icon" onClick={() => setTrashOpen(true)} title="Cestino" aria-label="Cestino">
+              <Trash2 className="h-4 w-4" />
+            </Button>
             <NewMenu
               onNewFolder={() => setNewFolderOpen(true)}
               onUploadFile={() => fileInput.current?.click()}
@@ -1012,6 +1021,8 @@ export default function FilesPage() {
         onClose={() => setLinkProjectOpen(false)}
         onConfirm={(projectId) => bulkLinkProject(projectId)}
       />
+
+      <TrashDialog open={trashOpen} onClose={() => setTrashOpen(false)} />
 
       <ConfirmDialog
         open={!!deleteFolderTarget}
@@ -1387,21 +1398,23 @@ function EditFolderDialog({
 }: {
   folder: FolderNode | null;
   onClose: () => void;
-  onSave: (patch: { name: string; color: string | null; description: string | null }) => void;
+  onSave: (patch: { name: string; color: string | null; description: string | null; defaultVisibility: FolderVisibility | null }) => void;
 }) {
   const [name, setName] = useState('');
   const [color, setColor] = useState<string | null>(null);
   const [description, setDescription] = useState('');
+  const [visibility, setVisibility] = useState<'' | FolderVisibility>('');
   useEffect(() => {
     if (folder) {
       setName(folder.name);
       setColor(folder.color ?? null);
       setDescription(folder.description ?? '');
+      setVisibility(folder.defaultVisibility ?? '');
     }
   }, [folder]);
 
   const submit = () => {
-    if (name.trim()) onSave({ name: name.trim(), color, description: description.trim() || null });
+    if (name.trim()) onSave({ name: name.trim(), color, description: description.trim() || null, defaultVisibility: visibility || null });
     onClose();
   };
 
@@ -1435,6 +1448,13 @@ function EditFolderDialog({
               />
             ))}
           </div>
+        </Field>
+        <Field label="Visibilità predefinita" hint="Ereditata dai file caricati nella cartella.">
+          <Select value={visibility} onChange={(e) => setVisibility(e.target.value as '' | FolderVisibility)}>
+            <option value="">Interno (predefinito)</option>
+            <option value="internal">Interno</option>
+            <option value="client">Cliente</option>
+          </Select>
         </Field>
         <Field label="Descrizione" hint="Opzionale">
           <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />

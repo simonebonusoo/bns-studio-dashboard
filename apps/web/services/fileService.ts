@@ -132,4 +132,24 @@ export const fileService = {
     }
     await repositories.files.remove(file.id);
   },
+
+  /** Ripristina un file dal Cestino (annulla il soft-delete). */
+  async restore(file: FileItem): Promise<void> {
+    await repositories.files.update(file.id, { deletedAt: null } as Partial<FileItem>);
+  },
+
+  /**
+   * Eliminazione definitiva dal Cestino: rimuove l'oggetto Storage (in prod) e
+   * la riga metadati. Irreversibile.
+   */
+  async purge(file: FileItem): Promise<void> {
+    if (!IS_DEMO && file.url) {
+      const { error } = await getSupabaseClient()
+        .storage.from(env.storageBucket)
+        .remove([file.url]);
+      // Non blocchiamo la cancellazione dei metadati se l'oggetto è già assente.
+      if (error && !/not.*found/i.test(error.message)) throw error;
+    }
+    await repositories.files.hardDelete(file.id);
+  },
 };
